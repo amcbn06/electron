@@ -4,7 +4,7 @@ LDFLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 
 TARGET = electron
 
-SRCS = src/main.cpp src/electron.cpp
+SRCS = src/main.cpp src/electron.cpp src/utils.cpp
 
 all: $(TARGET)
 
