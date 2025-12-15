@@ -1,0 +1,11 @@
+Salvare circuit
+2
+1 CONDENS 252 546 2
+-1 0
+1.5 0
+2 BATERIE 602 406 2
+-2 0
+2 0
+2
+1 2 2 1
+1 1 2 2

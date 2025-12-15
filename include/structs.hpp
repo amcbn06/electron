@@ -1,5 +1,8 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <vector>
+
+using namespace std;
 
 #define MAX1 20
 #define MAX2 40
@@ -34,4 +37,9 @@ struct Legatura {
     int nod1_index;
     int piesa2_id;
     int nod2_index;
+};
+
+struct saveFile {
+    vector<piesa> piese;
+    vector<Legatura> legaturi;
 };

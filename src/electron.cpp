@@ -9,8 +9,10 @@ void initializeaza(piesa& P) {
     P.orientare = 0;
     strcpy(P.eticheta, P.nume);
     char numeFisier[MAX1 + 5];
-    strcpy(numeFisier, P.nume);
-    strcat(numeFisier, ".ps");
+
+    strcpy(numeFisier, "assets/");
+    strcat(numeFisier, P.nume);
+    strcat(numeFisier, ".PS");
     
     FILE* f = fopen(numeFisier, "rt");
     if (!f) {
@@ -118,6 +120,10 @@ void myArc(sf::RenderWindow& window, piesa P, unsigned i, sf::Color color) {
     drawSfmlArc(window, P.x + x1*zoom, P.y + y1*zoom, r*zoom, startAngle, endAngle, color);
 }
 
+void myLegatura(sf::RenderWindow& window, piesa P, unsigned i, sf::Color color) {
+    // Placeholder for custom connection drawing if needed
+}
+
 void deseneaza(sf::RenderWindow& window, piesa P, sf::Color color) {
     for (unsigned i = 1; i <= P.descr.nComenzi; i++) {
         switch (P.descr.comanda[i]) {
@@ -125,6 +131,7 @@ void deseneaza(sf::RenderWindow& window, piesa P, sf::Color color) {
             case 'R': myRectangle(window, P, i, color); break;
             case 'O': myEllipse(window, P, i, color); break;
             case 'A': myArc(window, P, i, color); break;
+            case 'M': myLegatura(window,P,i,color); break;
         }
     }
     
