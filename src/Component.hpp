@@ -2,7 +2,23 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 
-enum ComponentType { RESISTOR, CAPACITOR, LED };
+using ComponentType = std::string;
+
+const std::vector<ComponentType> types = {
+    "servo_motor",
+    "baterie",
+    "condensator_polarizat",
+    "dioda_zenner",
+    "tranzistor_npn",
+    "nod",
+    "nand",
+    "stop",
+    "condensator",
+    "tranzistor_pnp",
+    "rezistenta",
+    "dioda",
+    "amplificator"
+};
 
 struct Component {
     ComponentType type;

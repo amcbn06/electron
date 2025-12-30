@@ -3,6 +3,8 @@
 #include "Component.hpp"
 #include "Constants.hpp"
 #include <cmath>
+#include <string>
+#include <fstream>
 
 namespace Renderer {
 
@@ -39,27 +41,101 @@ namespace Renderer {
         return sf::Vector2f(point.x * c - point.y * s, point.x * s + point.y * c);
     }
 
+
+    void drawLine(sf::RenderWindow& window, sf::Vector2f a, sf::Vector2f b) {
+        sf::VertexArray line(sf::Lines, 2);
+        line[0] = sf::Vertex(a, sf::Color::White);
+        line[1] = sf::Vertex(b, sf::Color::White);
+        window.draw(line);
+    }
+
+    void drawRectangle(sf::RenderWindow& window, sf::Vector2f upperLeft, sf::Vector2f lowerRight) {
+        sf::Vector2f upperRight{ lowerRight.x, upperLeft.y };
+        sf::Vector2f lowerLeft{ upperLeft.x, lowerRight.y };
+
+        sf::VertexArray lines(sf::Lines);
+        lines.append(sf::Vertex(upperLeft,  sf::Color::White));
+        lines.append(sf::Vertex(upperRight, sf::Color::White));
+
+        lines.append(sf::Vertex(upperRight, sf::Color::White));
+        lines.append(sf::Vertex(lowerRight, sf::Color::White));
+
+        lines.append(sf::Vertex(lowerRight, sf::Color::White));
+        lines.append(sf::Vertex(lowerLeft,  sf::Color::White));
+
+        lines.append(sf::Vertex(lowerLeft,  sf::Color::White));
+        lines.append(sf::Vertex(upperLeft,  sf::Color::White));
+
+        window.draw(lines);
+    }
+
+    void drawEllipse(sf::RenderWindow& window, sf::Vector2f center, float a, float b, int segments = 64) {
+        sf::VertexArray strip(sf::LineStrip);
+        strip.resize(segments + 1);
+        for (int i = 0; i <= segments; ++i) {
+            float t = (float)i / (float)segments * 2.0f * M_PI;
+            sf::Vector2f p = center + sf::Vector2f(a * std::cos(t), b * std::sin(t));
+            strip[i] = sf::Vertex(p, sf::Color::White);
+        }
+        window.draw(strip);
+    }
+    
+
+
+    void drawComponent(sf::RenderWindow& window, const Component& comp)
+    {
+        std::ifstream fin("assets/"+comp.type+".txt");
+        std::string nume;
+        std::getline(fin,nume);
+        
+        int cntleg;
+        fin>>cntleg;
+
+        for(int i= 0; i < cntleg; ++i){
+            float x,y;
+            fin>>x>>y;
+            sf::Vector2f centru = comp.position + sf::Vector2f{x,y};
+            drawEllipse(window, centru, 0.2 , 0.2);
+        }
+
+        int cntpoints;
+        fin>>cntpoints;
+        std::vector<sf::Vector2f> rawPoints(cntpoints);
+        for(int i= 0; i < cntpoints; ++i){
+            char type;
+            float a,b,c,d;
+            fin>>type>>a>>b>>c>>d;
+            if(type == 'L'){
+                sf::Vector2f pos1 = comp.position + sf::Vector2f{a,b} * Constants::pb_scale;
+                sf::Vector2f pos2 = comp.position + sf::Vector2{c,d} * Constants::pb_scale;
+                drawLine(window, pos1,pos2);
+            }
+        }
+
+
+
+    }
+
     void drawResistor(sf::RenderWindow& window, const Component& comp) {
-        // Define the shape relative to center (0,0)
-        // A standard resistor has leads and a zig-zag body
-        std::vector<sf::Vector2f> points = {
-            {-30, 0}, {-15, 0},      // Left Wire
-            {-10, -10}, {0, 10},     // Up, Down
-            {10, -10}, {15, 0},      // Up, Back to center
-            {30, 0}                  // Right Wire
+        sf::VertexArray lines(sf::Lines);
+        std::vector<sf::Vector2f> rawPoints = {
+            {-2.25f, -2.25f}, {-3.0f, -2.25f},
+            {-2.25f,  0.75f}, {-3.0f,  0.75f},
+            {-2.625f, 0.375f}, {-2.625f, 1.125f},
+            {-1.5f,  -3.0f},  {-1.5f,  3.0f},
+            {-1.5f,  -3.0f},  {1.5f,   0.0f},
+            {-1.5f,   3.0f},  {1.5f,   0.0f},
+            {1.5f,    0.0f},  {4.5f,   0.0f},
+            {-1.5f,  -1.5f},  {-4.5f, -1.5f},
+            {-1.5f,   1.5f},  {-4.5f,  1.5f}
         };
 
-        sf::VertexArray lines(sf::LinesStrip, points.size());
-
-        for (size_t i = 0; i < points.size(); i++) {
-            // 1. Rotate the point based on component rotation
-            sf::Vector2f rotated = rotatePoint(points[i], comp.rotation);
-            
-            // 2. Translate to the actual component position
-            lines[i].position = rotated + comp.position;
-            
-            // 3. Set Color (Yellow if selected, White otherwise)
-            lines[i].color = comp.isSelected ? sf::Color::Yellow : sf::Color::White;
+        for (auto& p : rawPoints) {
+            p.x *= 10;
+            p.y *= 10;
+            sf::Vector2f finalPos = rotatePoint(p, comp.rotation) + comp.position;
+            sf::Color col = comp.isSelected ? sf::Color::Yellow : sf::Color::White;
+            lines.append(sf::Vertex(finalPos, col));
         }
 
         window.draw(lines);
@@ -89,9 +165,7 @@ namespace Renderer {
 
     void drawAllComponents(sf::RenderWindow& window, const std::vector<Component>& list) {
         for (const auto& comp : list) {
-            if (comp.type == RESISTOR) drawResistor(window, comp);
-            else if (comp.type == CAPACITOR) drawCapacitor(window, comp);
-            // Add LED logic later
+            drawComponent(window, comp);
         }
     }
 } 
