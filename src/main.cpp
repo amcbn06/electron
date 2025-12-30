@@ -72,7 +72,7 @@ int main() {
                 sf::Vector2f mouseWorld = window.mapPixelToCoords(sf::Mouse::getPosition(window), view);
                 
                 // Spawn a Resistor! (Hardcoded type for now)
-                spawnComponent(components, ComponentType::CAPACITOR, mouseWorld);
+                spawnComponent(components, "tranzistor_npn", mouseWorld);
             }
         }
 
@@ -97,8 +97,7 @@ int main() {
 
         // 2. Draw Components
         Renderer::drawAllComponents(window, components);
-
-        // Display the view
+        
         window.display();
 
     }
