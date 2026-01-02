@@ -5,6 +5,9 @@
 #include <cmath>
 #include <string>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
+#include <iostream>
 
 namespace Renderer {
 
@@ -42,48 +45,78 @@ namespace Renderer {
     }
 
 
-    void drawLine(sf::RenderWindow& window, sf::Vector2f a, sf::Vector2f b) {
+    void drawLine(sf::RenderWindow& window, sf::Vector2f a, sf::Vector2f b, sf::Color color = sf::Color::White) {
         sf::VertexArray line(sf::Lines, 2);
-        line[0] = sf::Vertex(a, sf::Color::White);
-        line[1] = sf::Vertex(b, sf::Color::White);
+        line[0] = sf::Vertex(a, color);
+        line[1] = sf::Vertex(b, color);
         window.draw(line);
     }
 
-    void drawRectangle(sf::RenderWindow& window, sf::Vector2f upperLeft, sf::Vector2f lowerRight) {
+    void drawRectangle(sf::RenderWindow& window, sf::Vector2f upperLeft, sf::Vector2f lowerRight, sf::Color color = sf::Color::White) {
         sf::Vector2f upperRight{ lowerRight.x, upperLeft.y };
         sf::Vector2f lowerLeft{ upperLeft.x, lowerRight.y };
 
         sf::VertexArray lines(sf::Lines);
-        lines.append(sf::Vertex(upperLeft,  sf::Color::White));
-        lines.append(sf::Vertex(upperRight, sf::Color::White));
+        lines.append(sf::Vertex(upperLeft,  color));
+        lines.append(sf::Vertex(upperRight, color));
 
-        lines.append(sf::Vertex(upperRight, sf::Color::White));
-        lines.append(sf::Vertex(lowerRight, sf::Color::White));
+        lines.append(sf::Vertex(upperRight, color));
+        lines.append(sf::Vertex(lowerRight, color));
 
-        lines.append(sf::Vertex(lowerRight, sf::Color::White));
-        lines.append(sf::Vertex(lowerLeft,  sf::Color::White));
+        lines.append(sf::Vertex(lowerRight, color));
+        lines.append(sf::Vertex(lowerLeft,  color));
 
-        lines.append(sf::Vertex(lowerLeft,  sf::Color::White));
-        lines.append(sf::Vertex(upperLeft,  sf::Color::White));
+        lines.append(sf::Vertex(lowerLeft,  color));
+        lines.append(sf::Vertex(upperLeft,  color));
 
         window.draw(lines);
     }
 
-    void drawEllipse(sf::RenderWindow& window, sf::Vector2f center, float a, float b, int segments = 64) {
-        sf::VertexArray strip(sf::LineStrip);
-        strip.resize(segments + 1);
-        for (int i = 0; i <= segments; ++i) {
-            float t = (float)i / (float)segments * 2.0f * M_PI;
-            sf::Vector2f p = center + sf::Vector2f(a * std::cos(t), b * std::sin(t));
-            strip[i] = sf::Vertex(p, sf::Color::White);
+    void drawEllipse(sf::RenderWindow& window, sf::Vector2f center, float a, float b, sf::Color color, bool full = false, int segments = 64) {
+        if (segments < 3) segments = 3;
+
+        if (full) {
+            // Approximate a filled ellipse using a convex polygon
+            sf::ConvexShape poly;
+            poly.setPointCount(segments);
+            for (int i = 0; i < segments; ++i) {
+                float t = (float)i / (float)segments * 2.0f * M_PI;
+                sf::Vector2f p{a * std::cos(t), b * std::sin(t)};
+                poly.setPoint(i, p);
+            }
+            poly.setPosition(center);
+            poly.setFillColor(color);
+            window.draw(poly);
+        } else {
+            // Hollow ellipse (approximation)
+            sf::VertexArray strip(sf::LineStrip);
+            strip.resize(segments + 1);
+            for (int i = 0; i <= segments; ++i) {
+                float t = (float)i / (float)segments * 2.0f * M_PI;
+                sf::Vector2f p = center + sf::Vector2f(a * std::cos(t), b * std::sin(t));
+                strip[i] = sf::Vertex(p, color);
+            }
+            window.draw(strip);
         }
-        window.draw(strip);
     }
     
 
 
     void drawComponent(sf::RenderWindow& window, const Component& comp)
     {
+        static sf::Font labelFont;
+        static bool fontLoaded = false;
+        if (!fontLoaded) {
+            const char* tries[] = {
+                "assets/DejaVuSans.ttf",
+                "assets/Roboto-Regular.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+            };
+            for (auto &p : tries) {
+                if (labelFont.loadFromFile(p)) { fontLoaded = true; break; }
+            }
+        }
+
         std::ifstream fin("assets/"+comp.type+".txt");
         std::string nume;
         std::getline(fin,nume);
@@ -94,8 +127,8 @@ namespace Renderer {
         for(int i= 0; i < cntleg; ++i){
             float x,y;
             fin>>x>>y;
-            sf::Vector2f centru = comp.position + sf::Vector2f{x,y};
-            drawEllipse(window, centru, 0.2 , 0.2);
+            sf::Vector2f centru = comp.position + sf::Vector2f{x,y} * comp.scale;
+            drawEllipse(window, centru, 3, 3, sf::Color::Red, true);
         }
 
         int cntpoints;
@@ -105,62 +138,78 @@ namespace Renderer {
             char type;
             float a,b,c,d;
             fin>>type>>a>>b>>c>>d;
+            sf::Color mycolor = comp.isSelected ? sf::Color::Yellow : sf::Color::White;
             if(type == 'L'){
-                sf::Vector2f pos1 = comp.position + sf::Vector2f{a,b} * Constants::pb_scale;
-                sf::Vector2f pos2 = comp.position + sf::Vector2{c,d} * Constants::pb_scale;
-                drawLine(window, pos1,pos2);
+                sf::Vector2f pos1 = comp.position + sf::Vector2f{a,b} * comp.scale;
+                sf::Vector2f pos2 = comp.position + sf::Vector2f{c,d} * comp.scale;
+                drawLine(window, pos1,pos2, mycolor);
+            }
+            if(type=='R'){
+                sf::Vector2f pos1 = comp.position + sf::Vector2f{a,b} * comp.scale;
+                sf::Vector2f pos2 = comp.position + sf::Vector2f{c,d} * comp.scale;
+                drawRectangle(window, pos1,pos2, mycolor);
+            }
+            if(type=='O'){
+                sf::Vector2f pos = comp.position + sf::Vector2f{a,b} * comp.scale;
+                drawEllipse(window, pos, c * comp.scale, d  * comp.scale, mycolor);
             }
         }
 
+        // draw label under the component (uses same coordinate space as comp.position)
+        if (fontLoaded && !comp.simple) {
+            std::ostringstream ss;
+            if (!comp.marime_fizica.empty()) {
+                ss << comp.marime_fizica << " ";
+            }
+            ss << std::fixed << std::setprecision(2) << comp.valoare;
+            sf::Text label;
+            label.setFont(labelFont);
+            label.setString(ss.str());
+            // character size scaled by component scale, clamped
+            unsigned int charSize = Constants::text_size;
+            label.setCharacterSize(charSize);
+            label.setFillColor(sf::Color::White);
 
-
+            sf::FloatRect bounds = label.getLocalBounds();
+            label.setOrigin(bounds.left + bounds.width / 2.f, bounds.top);
+            // position below component center; adjust multiplier if needed
+            float textY = comp.position.y + 30.0f + (float)charSize;
+            label.setPosition(comp.position.x, textY);
+            window.draw(label);
+        }
     }
 
-    void drawResistor(sf::RenderWindow& window, const Component& comp) {
-        sf::VertexArray lines(sf::Lines);
-        std::vector<sf::Vector2f> rawPoints = {
-            {-2.25f, -2.25f}, {-3.0f, -2.25f},
-            {-2.25f,  0.75f}, {-3.0f,  0.75f},
-            {-2.625f, 0.375f}, {-2.625f, 1.125f},
-            {-1.5f,  -3.0f},  {-1.5f,  3.0f},
-            {-1.5f,  -3.0f},  {1.5f,   0.0f},
-            {-1.5f,   3.0f},  {1.5f,   0.0f},
-            {1.5f,    0.0f},  {4.5f,   0.0f},
-            {-1.5f,  -1.5f},  {-4.5f, -1.5f},
-            {-1.5f,   1.5f},  {-4.5f,  1.5f}
-        };
+    void drawMenu(sf::RenderWindow& window){
+        // keep menu fixed in screen space regardless of current view
+        sf::View prevView = window.getView();
+        window.setView(window.getDefaultView());
 
-        for (auto& p : rawPoints) {
-            p.x *= 10;
-            p.y *= 10;
-            sf::Vector2f finalPos = rotatePoint(p, comp.rotation) + comp.position;
-            sf::Color col = comp.isSelected ? sf::Color::Yellow : sf::Color::White;
-            lines.append(sf::Vertex(finalPos, col));
+        // background panel (opaque/semi-opaque) to separate menu
+        const float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
+        sf::RectangleShape menuBg(sf::Vector2f(menuWidth, static_cast<float>(window.getSize().y)));
+        menuBg.setPosition(0.f, 0.f);
+        menuBg.setFillColor(sf::Color(24, 24, 24, 255)); // dark, slightly translucent
+        window.draw(menuBg);
+
+        // build palette in screen coordinates (inside menu)
+        std::vector<Component> palette;
+        const float startX = 60.f; // x inside menu
+        const float startY = 60.f;
+        const float bottomMargin = 40.f;
+        float menuHeight = static_cast<float>(window.getSize().y);
+        float spacing = (menuHeight - startY - bottomMargin) / static_cast<float>(types.size());
+        for (size_t i = 0; i < types.size(); ++i) {
+            Renderer::drawComponent(window, Component(
+                startX,
+                startY + static_cast<float>(i) * spacing,
+                types[i],
+                true,
+                0.5F
+            ));
         }
 
-        window.draw(lines);
-    }
-
-    void drawCapacitor(sf::RenderWindow& window, const Component& comp) {
-        // Capacitor is two parallel plates
-        // We need discrete lines (sf::Lines), not a strip
-        sf::VertexArray lines(sf::Lines);
-
-        // Define pairs of points (Start -> End)
-        std::vector<sf::Vector2f> rawPoints = {
-            {-30, 0}, {-5, 0},   // Left Wire
-            {-5, -15}, {-5, 15}, // Left Plate (Vertical)
-            {5, -15}, {5, 15},   // Right Plate (Vertical)
-            {5, 0}, {30, 0}      // Right Wire
-        };
-
-        for (const auto& p : rawPoints) {
-            sf::Vector2f finalPos = rotatePoint(p, comp.rotation) + comp.position;
-            sf::Color col = comp.isSelected ? sf::Color::Yellow : sf::Color::White;
-            lines.append(sf::Vertex(finalPos, col));
-        }
-
-        window.draw(lines);
+        // restore previous (world) view
+        window.setView(prevView);
     }
 
     void drawAllComponents(sf::RenderWindow& window, const std::vector<Component>& list) {
@@ -168,4 +217,4 @@ namespace Renderer {
             drawComponent(window, comp);
         }
     }
-} 
+}
