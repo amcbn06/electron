@@ -6,7 +6,7 @@
 namespace Renderer {
     void drawGrid(sf::RenderWindow& window, const sf::View& view);
 
-    sf::Vector2f rotatePoint(sf::Vector2f point, float angleDegrees);
+    void rotatePoint(sf::Vector2f origin, sf::Vector2f& point, float angleDegrees);
 
     void drawComponent(sf::RenderWindow& window, const Component& comp);
 

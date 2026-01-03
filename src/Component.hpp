@@ -27,7 +27,7 @@ struct Component
     std::string marime_fizica;
     float valoare;
 
-    float rotation = 0.0f; // In degrees
+    float rotation = 0.0f;
     float scale = 20.0f;
     bool isSelected = false;
     bool simple = false;
@@ -43,5 +43,10 @@ struct Component
     Component() {}
 };
 
-// Simplified spawn function (no texture needed)
-void spawnComponent(std::vector<Component> &list, ComponentType type, sf::Vector2f pos);
+void spawnComponent(ComponentType type, sf::Vector2f pos);
+int get_selection();
+bool too_close(sf::Vector2f pos, int qui);
+int find_closest(sf::Vector2f pos);
+void rotate(Component& x);
+void editMf(Component& x);
+void zoom(Component& x, bool direction);

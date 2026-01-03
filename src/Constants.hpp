@@ -5,20 +5,18 @@ namespace Constants
 {
     inline const float gridStep = 40.0f;
 
-    // Recommended range between 0.03 and 0.1
     inline const float zoomSensitivity = 0.1f;
 
-    // #TODO: idk how to implement panning sensitivity
     inline const float panningSensitivity = 1.0f;
 
     const float zoomAlpha = 0.5;
-    const long double paddingDelay = 0.05; // in seconds
+    const long double paddingDelay = 0.05;
 
     const float text_size = 20.0f;
 
     const float select_thr = 30;
-    
-    const float min_dist_comps = 200;
+
+    const float min_dist_comps = 150;
 
     const std::map<std::string, std::tuple<std::string, float, float>> componente = {
         {"servo_motor", {"grade", 90.0f, 10}},

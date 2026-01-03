@@ -11,7 +11,6 @@
 
 namespace Renderer {
 
-    // Drawing the grid
     void drawGrid(sf::RenderWindow& window, const sf::View& view) {
         sf::Vector2f center = view.getCenter();
         sf::Vector2f size = view.getSize();
@@ -36,12 +35,13 @@ namespace Renderer {
         }
     }
 
-    // Helper to rotate a point around (0,0)
-    sf::Vector2f rotatePoint(sf::Vector2f point, float angleDegrees) {
+    void rotatePoint(sf::Vector2f origin, sf::Vector2f& point, float angleDegrees) {
         float rad = angleDegrees * M_PI / 180.0f;
         float s = std::sin(rad);
         float c = std::cos(rad);
-        return sf::Vector2f(point.x * c - point.y * s, point.x * s + point.y * c);
+        sf::Vector2f rel = point - origin;
+        sf::Vector2f rotated(rel.x * c - rel.y * s, rel.x * s + rel.y * c);
+        point = origin + rotated;
     }
 
 
@@ -76,7 +76,6 @@ namespace Renderer {
         if (segments < 3) segments = 3;
 
         if (full) {
-            // Approximate a filled ellipse using a convex polygon
             sf::ConvexShape poly;
             poly.setPointCount(segments);
             for (int i = 0; i < segments; ++i) {
@@ -88,7 +87,6 @@ namespace Renderer {
             poly.setFillColor(color);
             window.draw(poly);
         } else {
-            // Hollow ellipse (approximation)
             sf::VertexArray strip(sf::LineStrip);
             strip.resize(segments + 1);
             for (int i = 0; i <= segments; ++i) {
@@ -107,14 +105,8 @@ namespace Renderer {
         static sf::Font labelFont;
         static bool fontLoaded = false;
         if (!fontLoaded) {
-            const char* tries[] = {
-                "assets/DejaVuSans.ttf",
-                "assets/Roboto-Regular.ttf",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-            };
-            for (auto &p : tries) {
-                if (labelFont.loadFromFile(p)) { fontLoaded = true; break; }
-            }
+            labelFont.loadFromFile("assets/DejaVuSans.ttf");
+            fontLoaded = true;
         }
 
         std::ifstream fin("assets/"+comp.type+".txt");
@@ -128,6 +120,7 @@ namespace Renderer {
             float x,y;
             fin>>x>>y;
             sf::Vector2f centru = comp.position + sf::Vector2f{x,y} * comp.scale;
+            rotatePoint(comp.position, centru, comp.rotation);
             drawEllipse(window, centru, 3, 3, sf::Color::Red, true);
         }
 
@@ -142,37 +135,49 @@ namespace Renderer {
             if(type == 'L'){
                 sf::Vector2f pos1 = comp.position + sf::Vector2f{a,b} * comp.scale;
                 sf::Vector2f pos2 = comp.position + sf::Vector2f{c,d} * comp.scale;
+                rotatePoint(comp.position,pos1, comp.rotation);
+                rotatePoint(comp.position,pos2, comp.rotation);
                 drawLine(window, pos1,pos2, mycolor);
             }
             if(type=='R'){
                 sf::Vector2f pos1 = comp.position + sf::Vector2f{a,b} * comp.scale;
                 sf::Vector2f pos2 = comp.position + sf::Vector2f{c,d} * comp.scale;
+                rotatePoint(comp.position,pos1, comp.rotation);
+                rotatePoint(comp.position,pos2, comp.rotation);
                 drawRectangle(window, pos1,pos2, mycolor);
             }
             if(type=='O'){
                 sf::Vector2f pos = comp.position + sf::Vector2f{a,b} * comp.scale;
+                rotatePoint(comp.position,pos, comp.rotation);
+                std::cout<<comp.rotation<<'\n';
+                if((int)comp.rotation / 90 % 2 == 1){
+                    std::swap(c,d);
+                }
                 drawEllipse(window, pos, c * comp.scale, d  * comp.scale, mycolor);
             }
         }
 
-        // draw label under the component (uses same coordinate space as comp.position)
         if (fontLoaded && !comp.simple) {
             std::ostringstream ss;
             if (!comp.marime_fizica.empty()) {
                 ss << comp.marime_fizica << " ";
             }
-            ss << std::fixed << std::setprecision(2) << comp.valoare;
+            if(comp.valoare == INFINITY){
+                ss << "?";
+            }   else{
+                ss << std::fixed << std::setprecision(2) << comp.valoare;
+            }
             sf::Text label;
             label.setFont(labelFont);
             label.setString(ss.str());
-            // character size scaled by component scale, clamped
+            
             unsigned int charSize = Constants::text_size;
             label.setCharacterSize(charSize);
             label.setFillColor(sf::Color::White);
 
             sf::FloatRect bounds = label.getLocalBounds();
             label.setOrigin(bounds.left + bounds.width / 2.f, bounds.top);
-            // position below component center; adjust multiplier if needed
+            
             float textY = comp.position.y + 30.0f + (float)charSize;
             label.setPosition(comp.position.x, textY);
             window.draw(label);
@@ -180,35 +185,33 @@ namespace Renderer {
     }
 
     void drawMenu(sf::RenderWindow& window){
-        // keep menu fixed in screen space regardless of current view
         sf::View prevView = window.getView();
         window.setView(window.getDefaultView());
+        prevView = window.getView();
+        window.setView(window.getDefaultView());
 
-        // background panel (opaque/semi-opaque) to separate menu
         const float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
         sf::RectangleShape menuBg(sf::Vector2f(menuWidth, static_cast<float>(window.getSize().y)));
         menuBg.setPosition(0.f, 0.f);
-        menuBg.setFillColor(sf::Color(24, 24, 24, 255)); // dark, slightly translucent
+        menuBg.setFillColor(sf::Color(24, 24, 24, 255));
         window.draw(menuBg);
 
-        // build palette in screen coordinates (inside menu)
         std::vector<Component> palette;
-        const float startX = 60.f; // x inside menu
-        const float startY = 60.f;
-        const float bottomMargin = 40.f;
+        const float startX = menuWidth * 0.5f;
+        const float startY = static_cast<float>(window.getSize().y) * 0.06f;
+        const float bottomMargin = static_cast<float>(window.getSize().y) * 0.06f;
         float menuHeight = static_cast<float>(window.getSize().y);
         float spacing = (menuHeight - startY - bottomMargin) / static_cast<float>(types.size());
         for (size_t i = 0; i < types.size(); ++i) {
             Renderer::drawComponent(window, Component(
-                startX,
-                startY + static_cast<float>(i) * spacing,
+                static_cast<int>(startX),
+                static_cast<int>(startY + static_cast<float>(i) * spacing),
                 types[i],
                 true,
                 0.5F
             ));
         }
 
-        // restore previous (world) view
         window.setView(prevView);
     }
 
