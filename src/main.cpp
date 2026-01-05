@@ -6,100 +6,211 @@
 #include <iostream>
 #include <chrono>
 
-// Global list of components
-std::vector<Component> components;
+extern std::vector<Component> components;
 
-long long getTime(){
-    return std::chrono::steady_clock::now().time_since_epoch().count();
-}
+int main()
+{
+    sf::RenderWindow window(sf::VideoMode(1500, 1000), "Electron - Vizualizator de scheme electronice");
+    window.setFramerateLimit(100);
 
-int main() {
-    sf::RenderWindow window(sf::VideoMode(1200, 800), "Electron - Vizualizator de scheme electronice");
-    window.setFramerateLimit(60);
-
-    // Camera State
     sf::View view = window.getDefaultView();
 
     float zoomLevel = 1.0f;
     bool isPanning = false;
-    long double lastUpdated = getTime();
 
-    // track mouse in pixel coordinates (integers) for mapPixelToCoords
+    bool isEditing = false;
+
     sf::Vector2i lastMousePixel;
 
-    while (window.isOpen()) {
+    std::string inputBuffer;
+
+    while (window.isOpen())
+    {
         sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                std::cerr << "Shutting down.\n";
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+            {
                 window.close();
             }
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::W && event.key.control) {
-                std::cerr << "Ctrl + W pressed, shutting down.\n";
-                window.close();
+
+            if (event.type == sf::Event::KeyPressed)
+            {
+                if (event.key.code == sf::Keyboard::W && event.key.control)
+                {
+                    window.close();
+                }
+                if (event.key.code == sf::Keyboard::Enter)
+                {
+                    isEditing = false;
+                }
+
+                if (event.key.code == sf::Keyboard::R)
+                {
+                    int comp = get_selection();
+                    if (comp != -1)
+                    {
+                        rotate(components[comp]);
+                    }
+                }
+
+                if (event.key.code == sf::Keyboard::E)
+                {
+                    int comp = get_selection();
+                    if (comp != -1)
+                    {
+                        isEditing = true;
+                        inputBuffer.clear();
+                    }
+                }
             }
-            // Zooming logic (Middle Mouse Button Scroll)
-            if (event.type == sf::Event::MouseWheelScrolled) {
-                std::cerr << "Mouse Wheel Scrolled\n";
+
+            if (event.type == sf::Event::TextEntered && isEditing)
+            {
+
+                if (event.text.unicode == 8)
+                {
+                    if (!inputBuffer.empty())
+                    {
+                        inputBuffer.pop_back();
+                    }
+                }
+
+                else if (event.text.unicode >= '0' && event.text.unicode <= '9')
+                {
+                    inputBuffer += static_cast<char>(event.text.unicode);
+                }
+
+                else if (event.text.unicode == '.')
+                {
+                    if (inputBuffer.find('.') == std::string::npos)
+                    {
+                        inputBuffer += '.';
+                    }
+                }
+
+                int comp = get_selection();
+                if (!inputBuffer.empty())
+                {
+                    components[comp].valoare = std::stof(inputBuffer);
+                }
+                else
+                {
+                    components[comp].valoare = INFINITY;
+                }
+            }
+
+            if (event.type == sf::Event::MouseWheelScrolled)
+            {
+
+                int comp = get_selection();
+                if (comp != -1)
+                {
+                    zoom(components[comp], event.mouseWheelScroll.delta > 0);
+                    continue;
+                }
+
                 float zoomChange = 1.0f;
-                if (event.mouseWheelScroll.delta > 0) {
+                if (event.mouseWheelScroll.delta > 0)
+                {
                     zoomChange -= Constants::zoomSensitivity;
-                } else {
+                }
+                else
+                {
                     zoomChange += Constants::zoomSensitivity;
                 }
-                // Keep track of the current zooming degree, check if too big
-                if(zoomLevel * zoomChange < Constants::zoomAlpha || zoomLevel * zoomChange > 1.0 / Constants::zoomAlpha) {
+                if (zoomLevel * zoomChange < Constants::zoomAlpha || zoomLevel * zoomChange > 1.0 / Constants::zoomAlpha)
+                {
                     continue;
                 }
                 view.zoom(zoomChange);
                 zoomLevel *= zoomChange;
             }
 
-            // Panning Logic (Middle Mouse Button Click)
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right) {
-                std::cerr << "Right Mouse Button Clicked, panning activated\n";
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right)
+            {
                 isPanning = true;
                 lastMousePixel = sf::Mouse::getPosition(window);
             }
-            if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right) {
-                isPanning = false;
-            }
-            
 
-            // Spawning Logic (Left Mouse Button Click)
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-                std::cerr << "Left Mouse Button clicked, spawning RESISTOR\n";
-                sf::Vector2f mouseWorld = window.mapPixelToCoords(sf::Mouse::getPosition(window), view);
-                
-                // Spawn a Resistor! (Hardcoded type for now)
-                spawnComponent(components, "tranzistor_npn", mouseWorld);
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+            {
+                sf::Vector2i mousePixel = sf::Mouse::getPosition(window);
+                float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
+                float menuHeight = static_cast<float>(window.getSize().y);
+                float startY = menuHeight * 0.06f;
+                float bottomMargin = menuHeight * 0.06f;
+                float spacing = (menuHeight - startY - bottomMargin) / static_cast<float>(types.size());
+
+                if (mousePixel.x <= (int)menuWidth)
+                {
+                    int idx = static_cast<int>(std::round((mousePixel.y - startY) / spacing));
+                    if (idx >= 0 && idx < (int)types.size())
+                    {
+                        for (auto &p : components) p.isSelected = false;
+                        spawnComponent(types[idx], window.getView().getCenter());
+                        int newIndex = static_cast<int>(components.size()) - 1;
+                        if (newIndex >= 0) components[newIndex].isSelected = true;
+                        isEditing = false;
+                        continue;
+                    }
+                }
+
+                int comp = find_closest(window.mapPixelToCoords(mousePixel, view));
+                if (comp != -1)
+                {
+                    if (!components[comp].isSelected)
+                    {
+                        for (auto &p : components)
+                        {
+                            p.isSelected = false;
+                        }
+                        components[comp].isSelected = true;
+                    }
+                    else
+                    {
+                        if (!too_close(window.mapPixelToCoords(mousePixel, view), comp))
+                        {
+                            components[comp].isSelected = false;
+                            isEditing = false;
+                        }
+                    }
+                }
+            }
+
+            if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right)
+            {
+                isPanning = false;
             }
         }
 
-        // Panning Logic
-        if (isPanning && (getTime()-lastUpdated) > Constants::paddingDelay * 1e9) {
+        if (isPanning)
+        {
             sf::Vector2i currentMousePixel = sf::Mouse::getPosition(window);
             sf::Vector2f lastWorld = window.mapPixelToCoords(lastMousePixel, view);
             sf::Vector2f currentWorld = window.mapPixelToCoords(currentMousePixel, view);
             sf::Vector2f delta = lastWorld - currentWorld;
             view.move(delta * Constants::panningSensitivity);
             lastMousePixel = currentMousePixel;
-            lastUpdated = getTime();
         }
 
- 
-        // Clear the background
-        window.clear(Theme::Background);
-        window.setView(view);
+        if (get_selection() != -1)
+        {
+            int c = get_selection();
+            components[c].position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+        }
 
-        // 1. Draw Grid
+        window.clear(Theme::Background);
+
         Renderer::drawGrid(window, view);
 
-        // 2. Draw Components
         Renderer::drawAllComponents(window, components);
-        
-        window.display();
 
+        Renderer::drawMenu(window);
+
+        window.setView(view);
+
+        window.display();
     }
     return 0;
 }
