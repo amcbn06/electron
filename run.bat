@@ -21,6 +21,9 @@ if %errorlevel% neq 0 (
 :: 4. Copy DLLs from SFML/bin to the build folder so the .exe can run
 copy "C:\SFML\bin\*.dll" "build\" >nul
 
+:: Copy assets folder if it exists
+if exist "assets" xcopy "assets" "build\assets" /E /I /Y >nul
+
 echo [SUCCESS] Build complete. Running electron.exe...
 echo.
 

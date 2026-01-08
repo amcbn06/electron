@@ -44,7 +44,6 @@ namespace Renderer {
         point = origin + rotated;
     }
 
-
     void drawLine(sf::RenderWindow& window, sf::Vector2f a, sf::Vector2f b, sf::Color color = sf::Color::White) {
         sf::VertexArray line(sf::Lines, 2);
         line[0] = sf::Vertex(a, color);
@@ -98,10 +97,7 @@ namespace Renderer {
         }
     }
     
-
-
-    void drawComponent(sf::RenderWindow& window, const Component& comp)
-    {
+    void drawComponent(sf::RenderWindow& window, const Component& comp) {
         static sf::Font labelFont;
         static bool fontLoaded = false;
         if (!fontLoaded) {
@@ -114,18 +110,18 @@ namespace Renderer {
         std::getline(fin,nume);
         
         int cntleg;
-        fin>>cntleg;
+        fin >> cntleg;
 
         for(int i= 0; i < cntleg; ++i){
             float x,y;
-            fin>>x>>y;
+            fin >> x >> y;
             sf::Vector2f centru = comp.position + sf::Vector2f{x,y} * comp.scale;
             rotatePoint(comp.position, centru, comp.rotation);
             drawEllipse(window, centru, 3, 3, sf::Color::Red, true);
         }
 
         int cntpoints;
-        fin>>cntpoints;
+        fin >> cntpoints;
         std::vector<sf::Vector2f> rawPoints(cntpoints);
         for(int i= 0; i < cntpoints; ++i){
             char type;
@@ -149,7 +145,7 @@ namespace Renderer {
             if(type=='O'){
                 sf::Vector2f pos = comp.position + sf::Vector2f{a,b} * comp.scale;
                 rotatePoint(comp.position,pos, comp.rotation);
-                std::cout<<comp.rotation<<'\n';
+                // std::cout<<comp.rotation<<'\n';
                 if((int)comp.rotation / 90 % 2 == 1){
                     std::swap(c,d);
                 }
@@ -159,13 +155,13 @@ namespace Renderer {
 
         if (fontLoaded && !comp.simple) {
             std::ostringstream ss;
-            if (!comp.marime_fizica.empty()) {
-                ss << comp.marime_fizica << " ";
+            if (!comp.unit.empty()) {
+                ss << comp.unit << " ";
             }
-            if(comp.valoare == INFINITY){
+            if(comp.value == INFINITY){
                 ss << "?";
             }   else{
-                ss << std::fixed << std::setprecision(2) << comp.valoare;
+                ss << std::fixed << std::setprecision(2) << comp.value;
             }
             sf::Text label;
             label.setFont(labelFont);
@@ -189,12 +185,13 @@ namespace Renderer {
         window.setView(window.getDefaultView());
         prevView = window.getView();
         window.setView(window.getDefaultView());
-
+        // std::cerr << __LINE__ << std::endl;
         const float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
         sf::RectangleShape menuBg(sf::Vector2f(menuWidth, static_cast<float>(window.getSize().y)));
         menuBg.setPosition(0.f, 0.f);
         menuBg.setFillColor(sf::Color(24, 24, 24, 255));
         window.draw(menuBg);
+        // std::cerr << __LINE__ << std::endl;
 
         std::vector<Component> palette;
         const float startX = menuWidth * 0.5f;
@@ -202,22 +199,33 @@ namespace Renderer {
         const float bottomMargin = static_cast<float>(window.getSize().y) * 0.06f;
         float menuHeight = static_cast<float>(window.getSize().y);
         float spacing = (menuHeight - startY - bottomMargin) / static_cast<float>(types.size());
-        for (size_t i = 0; i < types.size(); ++i) {
-            Renderer::drawComponent(window, Component(
-                static_cast<int>(startX),
-                static_cast<int>(startY + static_cast<float>(i) * spacing),
-                types[i],
-                true,
-                0.5F
-            ));
+        // std::cerr << __LINE__ << std::endl;
+        static std::vector<Component> menuComponents;
+        if (menuComponents.empty()) {
+            for (size_t i = 0; i < types.size(); ++i) {
+                menuComponents.push_back(Component(
+                    static_cast<int>(startX),
+                    static_cast<int>(startY + static_cast<float>(i) * spacing),
+                    types[i],
+                    true,
+                    0.5F
+                ));
+            }
         }
+        for (size_t i = 0; i < types.size(); ++i) {
+            Renderer::drawComponent(window, menuComponents[i]);
+        }
+        // std::cerr << __LINE__ << std::endl;
 
         window.setView(prevView);
+        // std::cerr << "set view" << std::endl;
     }
 
     void drawAllComponents(sf::RenderWindow& window, const std::vector<Component>& list) {
+        // std::cerr << "list.size() = " << list.size() << "\n";
         for (const auto& comp : list) {
             drawComponent(window, comp);
         }
+        // std::cerr << "list.size() = " << list.size() << "\n";
     }
 }

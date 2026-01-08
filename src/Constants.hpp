@@ -1,8 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 
-namespace Constants
-{
+namespace Constants {
     inline const float gridStep = 40.0f;
 
     inline const float zoomSensitivity = 0.1f;
@@ -29,5 +28,6 @@ namespace Constants
         {"tranzistor_pnp", {"A", 0.5f, 20}},
         {"rezistenta", {"Ohm", 1000.0f, 20}},
         {"dioda", {"V", 0.7f, 20}},
-        {"amplificator", {"gain", 100.0f, 15}}};
+        {"amplificator", {"gain", 100.0f, 15}}
+    };
 }

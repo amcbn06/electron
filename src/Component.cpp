@@ -1,13 +1,13 @@
-#include "Component.hpp"
-#include "Constants.hpp"
 #include <cmath>
 #include <iostream>
 #include <sstream>
 
+#include "Component.hpp"
+#include "Constants.hpp"
+
 std::vector<Component> components;
 
-void spawnComponent(ComponentType type, sf::Vector2f pos)
-{
+void spawnComponent(ComponentType type, sf::Vector2f pos) {
     using Constants::gridStep;
 
     components.push_back(Component{
@@ -17,45 +17,37 @@ void spawnComponent(ComponentType type, sf::Vector2f pos)
         false});
 }
 
-int find_closest(sf::Vector2f pos)
-{
-    int qui = -1;
+int findClosest(sf::Vector2f pos) {
+    int index = -1;
     float minDist = INFINITY;
-    for (int i = 0; i < components.size(); ++i)
-    {
+    for (int i = 0; i < components.size(); ++i) {
         float d = std::hypot(components[i].position.x - pos.x, components[i].position.y - pos.y);
-        if (d < minDist)
-        {
+        if (d < minDist) {
             minDist = d;
-            qui = i;
+            index = i;
         }
     }
-    if (minDist < Constants::select_thr)
-    {
-        return qui;
+    if (minDist < Constants::select_thr) {
+        return index;
     }
     return -1;
 }
 
-bool too_close(sf::Vector2f pos, int qui)
-{
-    for (int i = 0; i < components.size(); ++i)
-    {
-        if (i == qui)
+bool tooClose(sf::Vector2f pos, int index) {
+    for (int i = 0; i < components.size(); ++i) {
+        if (i == index) {
             continue;
+        }
         float d = std::hypot(components[i].position.x - pos.x, components[i].position.y - pos.y);
-        if (d < Constants::min_dist_comps)
-        {
+        if (d < Constants::min_dist_comps) {
             return true;
         }
     }
     return false;
 }
 
-int get_selection()
-{
-    for (int i = 0; i < components.size(); ++i)
-    {
+int getSelection() {
+    for (int i = 0; i < components.size(); ++i) {
         if (components[i].isSelected)
         {
             return i;
@@ -76,9 +68,9 @@ void rotate(Component &x)
 void editMf(Component &x)
 {
     float new_val;
-    std::cout << "Introdu valoare noua: ";
+    std::cout << "Introdu value noua: ";
     std::cin >> new_val;
-    x.valoare = new_val;
+    x.value = new_val;
 }
 
 void zoom(Component &x, bool direction)
