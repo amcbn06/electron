@@ -2,6 +2,8 @@
 #include <SFML/Graphics.hpp>
 
 namespace Constants {
+    inline const float PI = 3.14159265359;
+
     inline const float gridStep = 40.0f;
 
     inline const float zoomSensitivity = 0.1f;
@@ -30,4 +32,8 @@ namespace Constants {
         {"dioda", {"V", 0.7f, 20}},
         {"amplificator", {"gain", 100.0f, 15}}
     };
+
+    namespace Pin {
+        inline const float clickTolerance = 10.0f;
+    }
 }

@@ -1,15 +1,72 @@
 #include "Renderer.hpp"
-#include "Theme.hpp"
+
+#include <cassert>
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <iostream> // for debugging
+#include <sstream>
+#include <vector>
+
 #include "Component.hpp"
 #include "Constants.hpp"
-#include <cmath>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iomanip>
-#include <iostream>
+#include "Theme.hpp"
+#include "Utils.hpp"
 
 namespace Renderer {
+    // Fundamental shapes
+    void drawLine(sf::RenderWindow& window, sf::Vector2f a, sf::Vector2f b, sf::Color color) {
+        sf::VertexArray line(sf::Lines, 2);
+        line[0] = sf::Vertex(a, color);
+        line[1] = sf::Vertex(b, color);
+        window.draw(line);
+    }
+
+    void drawRectangle(sf::RenderWindow& window, sf::Vector2f upperLeft, sf::Vector2f lowerRight, sf::Color color) {
+        sf::Vector2f upperRight{ lowerRight.x, upperLeft.y };
+        sf::Vector2f lowerLeft{ upperLeft.x, lowerRight.y };
+
+        sf::VertexArray lines(sf::Lines);
+        lines.append(sf::Vertex(upperLeft,  color));
+        lines.append(sf::Vertex(upperRight, color));
+
+        lines.append(sf::Vertex(upperRight, color));
+        lines.append(sf::Vertex(lowerRight, color));
+
+        lines.append(sf::Vertex(lowerRight, color));
+        lines.append(sf::Vertex(lowerLeft,  color));
+
+        lines.append(sf::Vertex(lowerLeft,  color));
+        lines.append(sf::Vertex(upperLeft,  color));
+
+        window.draw(lines);
+    }
+
+    void drawEllipse(sf::RenderWindow& window, sf::Vector2f center, float a, float b, sf::Color color, bool full, int segments) {
+        if (segments < 3) segments = 3;
+
+        if (full) {
+            sf::ConvexShape poly;
+            poly.setPointCount(segments);
+            for (int i = 0; i < segments; ++i) {
+                float t = (float)i / (float)segments * 2.0f * Constants::PI;
+                sf::Vector2f p{a * std::cos(t), b * std::sin(t)};
+                poly.setPoint(i, p);
+            }
+            poly.setPosition(center);
+            poly.setFillColor(color);
+            window.draw(poly);
+        } else {
+            sf::VertexArray strip(sf::LineStrip);
+            strip.resize(segments + 1);
+            for (int i = 0; i <= segments; ++i) {
+                float t = (float)i / (float)segments * 2.0f * Constants::PI;
+                sf::Vector2f p = center + sf::Vector2f(a * std::cos(t), b * std::sin(t));
+                strip[i] = sf::Vertex(p, color);
+            }
+            window.draw(strip);
+        }
+    }
 
     void drawGrid(sf::RenderWindow& window, const sf::View& view) {
         sf::Vector2f center = view.getCenter();
@@ -35,68 +92,6 @@ namespace Renderer {
         }
     }
 
-    void rotatePoint(sf::Vector2f origin, sf::Vector2f& point, float angleDegrees) {
-        float rad = angleDegrees * M_PI / 180.0f;
-        float s = std::sin(rad);
-        float c = std::cos(rad);
-        sf::Vector2f rel = point - origin;
-        sf::Vector2f rotated(rel.x * c - rel.y * s, rel.x * s + rel.y * c);
-        point = origin + rotated;
-    }
-
-    void drawLine(sf::RenderWindow& window, sf::Vector2f a, sf::Vector2f b, sf::Color color = sf::Color::White) {
-        sf::VertexArray line(sf::Lines, 2);
-        line[0] = sf::Vertex(a, color);
-        line[1] = sf::Vertex(b, color);
-        window.draw(line);
-    }
-
-    void drawRectangle(sf::RenderWindow& window, sf::Vector2f upperLeft, sf::Vector2f lowerRight, sf::Color color = sf::Color::White) {
-        sf::Vector2f upperRight{ lowerRight.x, upperLeft.y };
-        sf::Vector2f lowerLeft{ upperLeft.x, lowerRight.y };
-
-        sf::VertexArray lines(sf::Lines);
-        lines.append(sf::Vertex(upperLeft,  color));
-        lines.append(sf::Vertex(upperRight, color));
-
-        lines.append(sf::Vertex(upperRight, color));
-        lines.append(sf::Vertex(lowerRight, color));
-
-        lines.append(sf::Vertex(lowerRight, color));
-        lines.append(sf::Vertex(lowerLeft,  color));
-
-        lines.append(sf::Vertex(lowerLeft,  color));
-        lines.append(sf::Vertex(upperLeft,  color));
-
-        window.draw(lines);
-    }
-
-    void drawEllipse(sf::RenderWindow& window, sf::Vector2f center, float a, float b, sf::Color color, bool full = false, int segments = 64) {
-        if (segments < 3) segments = 3;
-
-        if (full) {
-            sf::ConvexShape poly;
-            poly.setPointCount(segments);
-            for (int i = 0; i < segments; ++i) {
-                float t = (float)i / (float)segments * 2.0f * M_PI;
-                sf::Vector2f p{a * std::cos(t), b * std::sin(t)};
-                poly.setPoint(i, p);
-            }
-            poly.setPosition(center);
-            poly.setFillColor(color);
-            window.draw(poly);
-        } else {
-            sf::VertexArray strip(sf::LineStrip);
-            strip.resize(segments + 1);
-            for (int i = 0; i <= segments; ++i) {
-                float t = (float)i / (float)segments * 2.0f * M_PI;
-                sf::Vector2f p = center + sf::Vector2f(a * std::cos(t), b * std::sin(t));
-                strip[i] = sf::Vertex(p, color);
-            }
-            window.draw(strip);
-        }
-    }
-    
     void drawComponent(sf::RenderWindow& window, const Component& comp) {
         static sf::Font labelFont;
         static bool fontLoaded = false;
@@ -116,7 +111,7 @@ namespace Renderer {
             float x,y;
             fin >> x >> y;
             sf::Vector2f centru = comp.position + sf::Vector2f{x,y} * comp.scale;
-            rotatePoint(comp.position, centru, comp.rotation);
+            Utils::rotatePoint(comp.position, centru, comp.rotation);
             drawEllipse(window, centru, 3, 3, sf::Color::Red, true);
         }
 
@@ -131,20 +126,20 @@ namespace Renderer {
             if(type == 'L'){
                 sf::Vector2f pos1 = comp.position + sf::Vector2f{a,b} * comp.scale;
                 sf::Vector2f pos2 = comp.position + sf::Vector2f{c,d} * comp.scale;
-                rotatePoint(comp.position,pos1, comp.rotation);
-                rotatePoint(comp.position,pos2, comp.rotation);
+                Utils::rotatePoint(comp.position,pos1, comp.rotation);
+                Utils::rotatePoint(comp.position,pos2, comp.rotation);
                 drawLine(window, pos1,pos2, mycolor);
             }
             if(type=='R'){
                 sf::Vector2f pos1 = comp.position + sf::Vector2f{a,b} * comp.scale;
                 sf::Vector2f pos2 = comp.position + sf::Vector2f{c,d} * comp.scale;
-                rotatePoint(comp.position,pos1, comp.rotation);
-                rotatePoint(comp.position,pos2, comp.rotation);
+                Utils::rotatePoint(comp.position,pos1, comp.rotation);
+                Utils::rotatePoint(comp.position,pos2, comp.rotation);
                 drawRectangle(window, pos1,pos2, mycolor);
             }
             if(type=='O'){
                 sf::Vector2f pos = comp.position + sf::Vector2f{a,b} * comp.scale;
-                rotatePoint(comp.position,pos, comp.rotation);
+                Utils::rotatePoint(comp.position,pos, comp.rotation);
                 // std::cout<<comp.rotation<<'\n';
                 if((int)comp.rotation / 90 % 2 == 1){
                     std::swap(c,d);
@@ -221,11 +216,29 @@ namespace Renderer {
         // std::cerr << "set view" << std::endl;
     }
 
-    void drawAllComponents(sf::RenderWindow& window, const std::vector<Component>& list) {
-        // std::cerr << "list.size() = " << list.size() << "\n";
-        for (const auto& comp : list) {
+    void drawWires(sf::RenderWindow& window) {
+        // lambda function to ensure valid indicies
+        auto check = [&](int index)->bool {
+            return index >= 0 && index < components.size();
+        };
+
+        for (const auto& wire : wires) {
+            if (check(wire.startComponentIndex) && check(wire.endComponentIndex)) {
+                std::cerr << "drawing wire" << std::endl;
+                sf::Vector2f start = components[wire.startComponentIndex].getAbsPin(wire.startPinIndex);
+                sf::Vector2f end = components[wire.endComponentIndex].getAbsPin(wire.endPinIndex);
+
+                Renderer::drawLine(window, start, end, Theme::Wire::idleColor);
+            }
+        }
+    }
+
+    void drawAllComponents(sf::RenderWindow& window) {
+        // draw wires behind components
+        drawWires(window);
+
+        for (const auto& comp : components) {
             drawComponent(window, comp);
         }
-        // std::cerr << "list.size() = " << list.size() << "\n";
     }
 }

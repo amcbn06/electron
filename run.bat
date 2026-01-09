@@ -4,7 +4,7 @@ if not exist "build" mkdir build
 
 :: 2. Compile the code (outputting the .exe inside the build folder)
 :: We use ../src because the compiler will be running from inside the build folder
-g++ src/main.cpp src/Renderer.cpp src/Component.cpp ^
+g++ src/main.cpp src/Renderer.cpp src/Component.cpp src/Utils.cpp ^
     -o build/electron.exe ^
     -I"C:/SFML/include" ^
     -L"C:/SFML/lib" ^

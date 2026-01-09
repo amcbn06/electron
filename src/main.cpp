@@ -1,12 +1,13 @@
 #include <SFML/Graphics.hpp>
+
+#include <chrono>
 #include <cmath>
 #include <iostream>
-#include <chrono>
 
-#include "Constants.hpp"
-#include "Theme.hpp"
-#include "Renderer.hpp"
 #include "Component.hpp"
+#include "Constants.hpp"
+#include "Renderer.hpp"
+#include "Theme.hpp"
 
 extern std::vector<Component> components;
 
@@ -148,7 +149,7 @@ int main() {
                         continue;
                     }
                     // Select the component under the cursor
-                    if (not components[selected].isSelected) {
+                    if (components[selected].isSelected == false) {
                         // Deselect everything else
                         for (auto& component : components) {
                             component.isSelected = false;
@@ -156,7 +157,7 @@ int main() {
                         components[selected].isSelected = true;
                     }
                     // If too close to another component, don't deselect 
-                    else if (not tooClose(window.mapPixelToCoords(mousePixel, view), selected)) {
+                    else if (tooClose(window.mapPixelToCoords(mousePixel, view), selected) == false) {
                         components[selected].isSelected = false;
                         isEditing = false;
                     }
@@ -200,7 +201,7 @@ int main() {
 
         Renderer::drawGrid(window, view);
 
-        Renderer::drawAllComponents(window, components);
+        Renderer::drawAllComponents(window);
 
         Renderer::drawMenu(window);
 
