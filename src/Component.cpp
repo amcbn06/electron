@@ -61,18 +61,8 @@ std::pair<int, int> findPinAt(const sf::Vector2f& pos) {
     return closestPin;
 }
 
-
 void spawnComponent(ComponentType type, sf::Vector2f pos) {
     components.emplace_back(pos.x, pos.y, type);
-    if (components.size() >= 2) {
-        std::cerr << "adding a wire" << std::endl;
-        wires.push_back(Wire{
-            (int)components.size() - 2,
-            0,
-            (int)components.size() - 1,
-            0
-        });
-    }
 }
 
 int findClosest(sf::Vector2f pos) {
@@ -90,8 +80,6 @@ int findClosest(sf::Vector2f pos) {
     }
     return -1;
 }
-
-
 
 bool tooClose(sf::Vector2f pos, int index) {
     for (int i = 0; i < components.size(); ++i) {

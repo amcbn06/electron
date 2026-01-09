@@ -9,15 +9,43 @@
 #include "Renderer.hpp"
 #include "Theme.hpp"
 
+// Reference the global components and wires
 extern std::vector<Component> components;
+extern std::vector<Wire> wires;
 
-// AppState
+// App State
 bool isPanning = false;
 bool isEditing = false;
 sf::Vector2i lastMousePixel;
 std::string inputBuffer;
 float zoomLevel = 1.0f;
 
+// Wiring State
+bool isWiring = false;
+std::pair<int, int> pendingPin(-1, -1);
+
+// Helper methods to avoid logic colisions
+void stopEditing() {
+    isEditing = false;
+    inputBuffer.clear();
+}
+
+void stopSelecting() {
+    for (auto& component : components) {
+        component.isSelected = false;
+    }
+    stopEditing();
+}
+
+void stopWiring() {
+    isWiring = false;
+    pendingPin = std::make_pair(-1, -1);
+}
+
+void stopAnyAction() {
+    stopWiring();
+    stopSelecting();
+}
 
 void handleTextInput(sf::Event& event) {
     if (event.text.unicode == 8) { // backspace
@@ -62,9 +90,9 @@ int main() {
                 if (event.key.code == sf::Keyboard::W && event.key.control) {
                     window.close();
                 }
-                // Finish editing (Enter)
-                if (event.key.code == sf::Keyboard::Enter) {
-                    isEditing = false;
+                // Stop any action we are doing (Esc)
+                if (event.key.code == sf::Keyboard::Escape) {
+                    stopAnyAction();
                 }
                 // Rotate (R)
                 if (event.key.code == sf::Keyboard::R) {
@@ -113,7 +141,7 @@ int main() {
 
             // Mouse press
             if (event.type == sf::Event::MouseButtonPressed) {
-                // Right Click -> Start panning
+                // Right Click -> Start panning / stop wiring
                 if (event.mouseButton.button == sf::Mouse::Right) {
                     isPanning = true;
                     lastMousePixel = sf::Mouse::getPosition(window);
@@ -121,48 +149,72 @@ int main() {
                 // Left Click -> Select or Menu
                 if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                     sf::Vector2i mousePixel = sf::Mouse::getPosition(window);
+                    sf::Vector2f mouseWorld = window.mapPixelToCoords(mousePixel, view);
+                    
                     float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
-                    float menuHeight = static_cast<float>(window.getSize().y);
-                    float margin = menuHeight * 0.06f;
-                    // Divide the space evenly for every component
-                    float spacing = (menuHeight - 2 * margin) / static_cast<float>(types.size());
-
-                    // in the Menu zone => select piece
+                    // In the Menu zone => Select piece
                     if (mousePixel.x <= menuWidth) {
-                        int index = static_cast<int>(std::round((mousePixel.y - margin) / spacing));
-                        if (index >= 0 && index < (int)types.size()) {
-                            for (auto& component : components) {
-                                component.isSelected = false;
-                            }
-                            spawnComponent(types[index], window.getView().getCenter());
-                            int newIndex = (int)components.size() - 1;
-                            if (newIndex >= 0) {
-                                components[newIndex].isSelected = true;
-                            }
-                            isEditing = false;
-                            continue;
+                        float menuHeight = static_cast<float>(window.getSize().y);
+                        float margin = menuHeight * 0.06f;
+                        // Divide the space evenly for every component
+                        float spacing = (menuHeight - 2 * margin) / static_cast<float>(types.size());
+
+                        int optionIndex = static_cast<int>(std::round((mousePixel.y - margin) / spacing));
+                        if (optionIndex >= 0 && optionIndex < (int)types.size()) {
+                            stopSelecting();
+                            spawnComponent(types[optionIndex], window.getView().getCenter());
+                            int index = (int)components.size() - 1;
+                            components[index].isSelected = true;
                         }
+                        continue;
                     }
 
-                    int selected = findClosest(window.mapPixelToCoords(mousePixel, view));
+                    // Check for pin selection first
+                    std::pair<int, int> clickedPin = findPinAt(mouseWorld);
+
+                    if (clickedPin.first != -1) {
+                        // Start wiring
+                        if (isWiring == false) {
+                            isWiring = true;
+                            pendingPin = clickedPin;
+                            stopSelecting();
+                        }
+                        else {
+                            // if the pins are from different components, wire them
+                            if (pendingPin.first != clickedPin.first) {
+                                wires.push_back(Wire{
+                                    pendingPin.first,
+                                    pendingPin.second,
+                                    clickedPin.first,
+                                    clickedPin.second
+                                });
+                            }
+                            stopWiring();
+                        }
+                        continue;
+                    }
+                    else if (isWiring) {
+                        // if we clicked anything other than a pin
+                        // while wiring, cancel wiring
+                        stopWiring();
+                        continue;
+                    }
+
+                    int selected = findClosest(mouseWorld);
                     if (selected == -1) {
+                        stopSelecting();
                         continue;
                     }
                     // Select the component under the cursor
                     if (components[selected].isSelected == false) {
-                        // Deselect everything else
-                        for (auto& component : components) {
-                            component.isSelected = false;
-                        }
+                        stopSelecting();
                         components[selected].isSelected = true;
                     }
                     // If too close to another component, don't deselect 
                     else if (tooClose(window.mapPixelToCoords(mousePixel, view), selected) == false) {
-                        components[selected].isSelected = false;
-                        isEditing = false;
+                        stopSelecting();
                     }
                 }
-
             }
 
             // Mouse release
@@ -200,6 +252,13 @@ int main() {
         window.clear(Theme::Background);
 
         Renderer::drawGrid(window, view);
+
+        // if wiring and got a valid start pin, draw a ghost wire
+        if (isWiring && pendingPin.first != -1) {
+            sf::Vector2f start = components[pendingPin.first].getAbsPin(pendingPin.second);
+            sf::Vector2f end = window.mapPixelToCoords(sf::Mouse::getPosition(window), view);
+            Renderer::drawLine(window, start, end, Theme::Wire::ghost);
+        }
 
         Renderer::drawAllComponents(window);
 

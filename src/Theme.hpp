@@ -11,7 +11,12 @@ namespace Theme {
     inline const sf::Color Selection   = sf::Color(66, 135, 245, 100);
 
     namespace Wire {
-        inline const sf::Color idleColor = sf::Color::White;
-        inline const sf::Color activeColor = sf::Color::Green;
+        inline const sf::Color idle = sf::Color::White;
+        inline const sf::Color ghost = sf::Color(105, 105, 105);
+    }
+
+    namespace Pin {
+        inline const sf::Color idle = sf::Color(105, 105, 105);
+        inline const sf::Color selected = sf::Color::Red;
     }
 }

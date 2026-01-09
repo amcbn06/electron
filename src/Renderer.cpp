@@ -4,7 +4,6 @@
 #include <cmath>
 #include <fstream>
 #include <iomanip>
-#include <iostream> // for debugging
 #include <sstream>
 #include <vector>
 
@@ -68,6 +67,7 @@ namespace Renderer {
         }
     }
 
+    // Project related
     void drawGrid(sf::RenderWindow& window, const sf::View& view) {
         sf::Vector2f center = view.getCenter();
         sf::Vector2f size = view.getSize();
@@ -224,11 +224,10 @@ namespace Renderer {
 
         for (const auto& wire : wires) {
             if (check(wire.startComponentIndex) && check(wire.endComponentIndex)) {
-                std::cerr << "drawing wire" << std::endl;
                 sf::Vector2f start = components[wire.startComponentIndex].getAbsPin(wire.startPinIndex);
                 sf::Vector2f end = components[wire.endComponentIndex].getAbsPin(wire.endPinIndex);
 
-                Renderer::drawLine(window, start, end, Theme::Wire::idleColor);
+                Renderer::drawLine(window, start, end, Theme::Wire::idle);
             }
         }
     }
