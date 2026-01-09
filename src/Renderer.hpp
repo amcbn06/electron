@@ -8,20 +8,22 @@
 
 namespace Renderer {
     // Fundamental shapes
-    void drawLine(sf::RenderWindow& window, sf::Vector2f a, sf::Vector2f b, sf::Color color = sf::Color::White);
+    void drawLine(sf::RenderWindow&, sf::Vector2f, sf::Vector2f, sf::Color = sf::Color::White);
 
-    void drawRectangle(sf::RenderWindow& window, sf::Vector2f upperLeft, sf::Vector2f lowerRight, sf::Color color = sf::Color::White);
+    void drawRectangle(sf::RenderWindow&, sf::Vector2f, sf::Vector2f, sf::Color = sf::Color::White);
 
-    void drawEllipse(sf::RenderWindow& window, sf::Vector2f center, float a, float b, sf::Color color, bool full = false, int segments = 64);
+    void drawEllipse(sf::RenderWindow&, sf::Vector2f, float, float, sf::Color, bool = false, int = 64);
     
     // Project related
-    void drawGrid(sf::RenderWindow& window, const sf::View& view);
+    void drawGrid(sf::RenderWindow&, const sf::View&);
 
-    void drawComponent(sf::RenderWindow& window, const Component& comp);
+    void drawAutoRoute(sf::RenderWindow&, sf::Vector2f, sf::Vector2f,  sf::Vector2f, float, sf::Vector2f, float, sf::Color color);
 
-    void drawMenu(sf::RenderWindow& window);
+    void drawWires(sf::RenderWindow&);
 
-    void drawAllComponents(sf::RenderWindow& window);
+    void drawComponent(sf::RenderWindow&, const Component&);
 
-    void drawWires(sf::RenderWindow& window);
+    void drawAllComponents(sf::RenderWindow&);
+
+    void drawMenu(sf::RenderWindow&);
 }

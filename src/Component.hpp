@@ -46,7 +46,7 @@ struct Component {
 
     Component(float x, float y, ComponentType type, bool simple = false, float zoom = 1.0f);
 
-    sf::Vector2f getAbsPin(int pinIndex);
+    sf::Vector2f getAbsPin(int pinIndex) const;
 };
 
 extern std::vector<Component> components;

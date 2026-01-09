@@ -11,6 +11,7 @@ namespace Theme {
     inline const sf::Color Selection   = sf::Color(66, 135, 245, 100);
 
     namespace Wire {
+        inline const float cornerRadius = 3.0f;
         inline const sf::Color idle = sf::Color::White;
         inline const sf::Color ghost = sf::Color(105, 105, 105);
     }

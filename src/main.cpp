@@ -154,6 +154,10 @@ int main() {
                     float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
                     // In the Menu zone => Select piece
                     if (mousePixel.x <= menuWidth) {
+                        if (getSelection() != -1) {
+                            stopSelecting();
+                            continue;
+                        }
                         float menuHeight = static_cast<float>(window.getSize().y);
                         float margin = menuHeight * 0.06f;
                         // Divide the space evenly for every component
@@ -223,13 +227,6 @@ int main() {
                 if (event.mouseButton.button == sf::Mouse::Right) {
                     isPanning = false;
                 }
-                // Left Click Release -> Stop dragging
-                // if (event.mouseButton.button == sf::Mouse::Left) {
-                //     for (auto& component : components) {
-                //         component.isSelected = false;
-                //     }
-                //     isEditing = false;
-                // }
             }
         }
 
@@ -255,9 +252,19 @@ int main() {
 
         // if wiring and got a valid start pin, draw a ghost wire
         if (isWiring && pendingPin.first != -1) {
-            sf::Vector2f start = components[pendingPin.first].getAbsPin(pendingPin.second);
-            sf::Vector2f end = window.mapPixelToCoords(sf::Mouse::getPosition(window), view);
-            Renderer::drawLine(window, start, end, Theme::Wire::ghost);
+            auto& startComponent = components[pendingPin.first];
+            sf::Vector2f startPin = startComponent.getAbsPin(pendingPin.second);
+            
+            float startThresh = startComponent.scale * 1.5f;
+
+            sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window), view);
+            sf::Vector2f mouseCenter(-9999, -9999); 
+
+            Renderer::drawAutoRoute(window, startPin, mousePos, 
+                                    startComponent.position, startThresh, 
+                                    mouseCenter, 0.0f, 
+                                    Theme::Wire::ghost);
+
         }
 
         Renderer::drawAllComponents(window);

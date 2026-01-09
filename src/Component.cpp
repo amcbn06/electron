@@ -31,7 +31,7 @@ Component::Component(float x, float y, ComponentType type, bool simple, float zo
     fin.close();
 }
 
-sf::Vector2f Component::getAbsPin(int pinIndex) {
+sf::Vector2f Component::getAbsPin(int pinIndex) const {
     assert(relPins.size() > 0 && pinIndex >= 0 && pinIndex < relPins.size());
     sf::Vector2f absPin = relPins[pinIndex];
     absPin = absPin * scale + position;
