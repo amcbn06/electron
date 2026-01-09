@@ -7,6 +7,7 @@
 #include "Component.hpp"
 #include "Constants.hpp"
 #include "Renderer.hpp"
+#include "SaveManager.hpp"
 #include "Theme.hpp"
 
 // Reference the global components and wires
@@ -73,7 +74,7 @@ void handleTextInput(sf::Event& event) {
 
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(1500, 1000), "Electron - Vizualizator de scheme electronice");
+    sf::RenderWindow window(sf::VideoMode(960, 720), "Electron - Vizualizator de scheme electronice");
     window.setFramerateLimit(100);
     sf::View view = window.getDefaultView();
 
@@ -107,6 +108,41 @@ int main() {
                     if (comp != -1) {
                         isEditing = true;
                         inputBuffer.clear();
+                    }
+                }
+
+                // Save (Ctrl + S)
+                if (event.key.code == sf::Keyboard::S && event.key.control) {
+                    stopAnyAction();
+                    
+                    // ask for filename in console
+                    std::cout << "\n[System] Enter filename to SAVE (e.g. 'my_circuit'): ";
+                    std::string filename;
+                    std::getline(std::cin, filename);
+                    
+                    // Save
+                    if (!filename.empty()) {
+                        // add .txt if missing
+                        if (filename.find(".txt") == std::string::npos) {
+                            filename += ".txt";
+                        }
+                        SaveManager::saveCircuit(filename, components, wires);
+                    }
+                }
+
+                // Load (Ctrl + O)
+                if (event.key.code == sf::Keyboard::O && event.key.control) {
+                    stopAnyAction();
+
+                    std::cout << "\n[System] Enter filename to LOAD (e.g. 'my_circuit'): ";
+                    std::string filename;
+                    std::getline(std::cin, filename);
+                    
+                    if (!filename.empty()) {
+                        if (filename.find(".txt") == std::string::npos) {
+                            filename += ".txt";
+                        }
+                        SaveManager::loadCircuit(filename, components, wires);
                     }
                 }
             }
