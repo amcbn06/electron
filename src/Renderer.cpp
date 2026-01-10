@@ -13,7 +13,7 @@
 #include "Utils.hpp"
 
 namespace Renderer {
-    // Fundamental shapes
+    
     void drawLine(sf::RenderWindow& window, sf::Vector2f a, sf::Vector2f b, sf::Color color) {
         sf::VertexArray line(sf::Lines, 2);
         line[0] = sf::Vertex(a, color);
@@ -67,7 +67,7 @@ namespace Renderer {
         }
     }
 
-    // Project related
+    
     void drawGrid(sf::RenderWindow& window, const sf::View& view) {
         sf::Vector2f center = view.getCenter();
         sf::Vector2f size = view.getSize();
@@ -93,17 +93,17 @@ namespace Renderer {
     }
 
     bool isBlocked(sf::Vector2f p1, sf::Vector2f p2, sf::Vector2f compPos, float threshold) {
-        // !!! threshold should be calculated according to scale
-        // vertical wire
+        
+        
         if (std::abs(p1.x - p2.x) < 1.0f) { 
-            // (component X close to wire X) AND (component Y between wire start/end)
+            
             bool xMatch = std::abs(compPos.x - p1.x) < threshold;
             bool yBetween = compPos.y > std::min(p1.y, p2.y) && compPos.y < std::max(p1.y, p2.y);
             return xMatch && yBetween;
         } 
-        // horizontal wire
+        
         else {
-            // (component Y close to wire Y) AND (component X between wire start/end)
+            
             bool yMatch = std::abs(compPos.y - p1.y) < threshold;
             bool xBetween = compPos.x > std::min(p1.x, p2.x) && compPos.x < std::max(p1.x, p2.x);
             return yMatch && xBetween;
@@ -111,7 +111,7 @@ namespace Renderer {
     }
 
     bool checkPath(sf::Vector2f p1, sf::Vector2f p2, sf::Vector2f startComp, float startSize, sf::Vector2f endComp, float endSize) {
-        // check both the start and end component
+        
         return isBlocked(p1, p2, startComp, startSize) || isBlocked(p1, p2, endComp, endSize);
     }
 
@@ -119,16 +119,16 @@ namespace Renderer {
         float deltaX = std::abs(end.x - start.x);
         float deltaY = std::abs(end.y - start.y);
 
-        // !!! detour should be calculated according to scale
+        
         float detour = std::max(startSize, endSize) * 2.0f;
 
-        // farther horizontally: try S (H-V-H)
+        
         if (deltaX > deltaY) {
             float midX = (start.x + end.x) / 2.0f;
             sf::Vector2f c1(midX, start.y);
             sf::Vector2f c2(midX, end.y);
 
-            // do any of the segments hit the components?
+            
             bool collision = checkPath(start, c1, startComp, startSize, endComp, endSize) ||
                         checkPath(c1, c2, startComp, startSize, endComp, endSize) ||
                         checkPath(c2, end, startComp, startSize, endComp, endSize);
@@ -138,12 +138,12 @@ namespace Renderer {
                 drawLine(window, c1, c2, color);
                 drawLine(window, c2, end, color);
             } else {
-                // switch to vertical C shape
-                float detourY = std::min(start.y, end.y) - detour; // try UP
+                
+                float detourY = std::min(start.y, end.y) - detour; 
                 sf::Vector2f d1(start.x, detourY);
                 sf::Vector2f d2(end.x, detourY);
 
-                // if UP crashes, go DOWN
+                
                 if (checkPath(start, d1, startComp, startSize, endComp, endSize) || checkPath(d1, d2, startComp, startSize, endComp, endSize)) {
                     detourY = std::max(start.y, end.y) + detour; 
                     d1 = sf::Vector2f(start.x, detourY);
@@ -155,7 +155,7 @@ namespace Renderer {
                 drawLine(window, d2, end, color);
             }
         }
-        // farther vertically: try S (V-H-V)
+        
         else {
             float midY = (start.y + end.y) / 2.0f;
             sf::Vector2f c1(start.x, midY);
@@ -170,12 +170,12 @@ namespace Renderer {
                 drawLine(window, c1, c2, color);
                 drawLine(window, c2, end, color);
             } else {
-                // switch to horizontal C shape
-                float detourX = std::min(start.x, end.x) - detour; // try LEFT
+                
+                float detourX = std::min(start.x, end.x) - detour; 
                 sf::Vector2f d1(detourX, start.y);
                 sf::Vector2f d2(detourX, end.y);
 
-                // if LEFT crashes, go RIGHT
+                
                 if (checkPath(start, d1, startComp, startSize, endComp, endSize) || checkPath(d1, d2, startComp, startSize, endComp, endSize)) {
                     detourX = std::max(start.x, end.x) + detour;
                     d1 = sf::Vector2f(detourX, start.y);
@@ -190,12 +190,15 @@ namespace Renderer {
     }
 
     void drawWires(sf::RenderWindow& window) {
-        // lambda function to ensure valid indicies
+        
         auto check = [&](int index)->bool {
             return index >= 0 && index < components.size();
         };
 
         for (const auto& wire : wires) {
+            if(components[wire.startComponentIndex].sters || components[wire.endComponentIndex].sters){
+                continue;
+            }
             if (check(wire.startComponentIndex) && check(wire.endComponentIndex)) {
                 const auto& startComponent = components[wire.startComponentIndex];
                 const auto& endComponent = components[wire.endComponentIndex];
@@ -203,7 +206,7 @@ namespace Renderer {
                 sf::Vector2f startPin = startComponent.getAbsPin(wire.startPinIndex);
                 sf::Vector2f endPin = endComponent.getAbsPin(wire.endPinIndex);
 
-                // scale + 50% margin
+                
                 float startThresh = startComponent.scale * 1.5f; 
                 float endThresh = endComponent.scale * 1.5f;
 
@@ -263,7 +266,7 @@ namespace Renderer {
             if(type=='O'){
                 sf::Vector2f pos = comp.position + sf::Vector2f{a,b} * comp.scale;
                 Utils::rotatePoint(comp.position,pos, comp.rotation);
-                // std::cout<<comp.rotation<<'\n';
+                
                 if((int)comp.rotation / 90 % 2 == 1){
                     std::swap(c,d);
                 }
@@ -299,11 +302,13 @@ namespace Renderer {
     }
 
     void drawAllComponents(sf::RenderWindow& window) {
-        // draw wires behind components
+        
         drawWires(window);
 
         for (const auto& comp : components) {
-            drawComponent(window, comp);
+            if(!comp.sters){
+                drawComponent(window, comp);
+            }
         }
     }
 
@@ -312,13 +317,13 @@ namespace Renderer {
         window.setView(window.getDefaultView());
         prevView = window.getView();
         window.setView(window.getDefaultView());
-        // std::cerr << __LINE__ << std::endl;
+        
         const float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
         sf::RectangleShape menuBg(sf::Vector2f(menuWidth, static_cast<float>(window.getSize().y)));
         menuBg.setPosition(0.f, 0.f);
         menuBg.setFillColor(sf::Color(24, 24, 24, 255));
         window.draw(menuBg);
-        // std::cerr << __LINE__ << std::endl;
+        
 
         std::vector<Component> palette;
         const float startX = menuWidth * 0.5f;
@@ -326,7 +331,7 @@ namespace Renderer {
         const float bottomMargin = static_cast<float>(window.getSize().y) * 0.06f;
         float menuHeight = static_cast<float>(window.getSize().y);
         float spacing = (menuHeight - startY - bottomMargin) / static_cast<float>(types.size());
-        // std::cerr << __LINE__ << std::endl;
+        
         static std::vector<Component> menuComponents;
         if (menuComponents.empty()) {
             for (size_t i = 0; i < types.size(); ++i) {
@@ -342,9 +347,9 @@ namespace Renderer {
         for (size_t i = 0; i < types.size(); ++i) {
             Renderer::drawComponent(window, menuComponents[i]);
         }
-        // std::cerr << __LINE__ << std::endl;
+        
 
         window.setView(prevView);
-        // std::cerr << "set view" << std::endl;
+        
     }
 }

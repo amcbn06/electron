@@ -11,12 +11,12 @@
 std::vector<Component> components;
 std::vector<Wire> wires;
 
-Component::Component(float x, float y, ComponentType type, bool simple, float zoom) : type(type), simple(simple) {
+Component::Component(float x, float y, ComponentType type, bool simple, float zoom) : type(type), simple(simple), sters(false) {
     position = sf::Vector2f(x, y);
     tie(unit, value, scale) = (*Constants::componente.find(type)).second;
     scale *= zoom;
 
-    // load pins from template files immediately
+    
     std::ifstream fin("assets/" + type + ".txt");
     std::string dummy;
     std::getline(fin, dummy);
@@ -43,15 +43,17 @@ std::pair<int, int> findPinAt(const sf::Vector2f& pos) {
     std::pair<int, int> closestPin(-1, -1);
     float minDistance = INFINITY;
     for (int i = 0; i < components.size(); ++i) {
+        if(components[i].sters) continue;
+        
         for (int j = 0; j < components[i].relPins.size(); ++j) {
             sf::Vector2f absPin = components[i].getAbsPin(j);
             sf::Vector2f delta = absPin - pos;
             float distance = std::hypot(delta.x, delta.y);
-            // ignore pins that are too far
+            
             if (distance > Constants::Pin::clickTolerance) {
                 continue;
             }
-            // keep only the closest pin
+            
             if (distance < minDistance) {
                 closestPin = std::make_pair(i, j);
                 minDistance = distance;
@@ -69,6 +71,9 @@ int findClosest(sf::Vector2f pos) {
     int index = -1;
     float minDist = INFINITY;
     for (int i = 0; i < components.size(); ++i) {
+        if(components[i].sters){
+            continue;
+        }
         float d = std::hypot(components[i].position.x - pos.x, components[i].position.y - pos.y);
         if (d < minDist) {
             minDist = d;
@@ -83,7 +88,7 @@ int findClosest(sf::Vector2f pos) {
 
 bool tooClose(sf::Vector2f pos, int index) {
     for (int i = 0; i < components.size(); ++i) {
-        if (i == index) {
+        if (i == index || components[i].sters) {
             continue;
         }
         float d = std::hypot(components[i].position.x - pos.x, components[i].position.y - pos.y);
@@ -128,7 +133,7 @@ void zoom(Component& component, bool zoomIn) {
 
     float initial_scale = std::get<2>(it);
 
-    // clamp zoom level
+    
     if (component.scale * zoom < initial_scale / Constants::zoomAlpha
         && component.scale * zoom > initial_scale * Constants::zoomAlpha) {
         component.scale *= zoom;

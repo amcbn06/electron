@@ -10,22 +10,22 @@
 #include "SaveManager.hpp"
 #include "Theme.hpp"
 
-// Reference the global components and wires
+
 extern std::vector<Component> components;
 extern std::vector<Wire> wires;
 
-// App State
+
 bool isPanning = false;
 bool isEditing = false;
 sf::Vector2i lastMousePixel;
 std::string inputBuffer;
 float zoomLevel = 1.0f;
 
-// Wiring State
+
 bool isWiring = false;
 std::pair<int, int> pendingPin(-1, -1);
 
-// Helper methods to avoid logic colisions
+
 void stopEditing() {
     isEditing = false;
     inputBuffer.clear();
@@ -49,16 +49,16 @@ void stopAnyAction() {
 }
 
 void handleTextInput(sf::Event& event) {
-    if (event.text.unicode == 8) { // backspace
+    if (event.text.unicode == 8) { 
         if (inputBuffer.size() > 0) {
             inputBuffer.pop_back();
         }
     }
-    else if (event.text.unicode >= '0' && event.text.unicode <= '9') { // add digit
+    else if (event.text.unicode >= '0' && event.text.unicode <= '9') { 
         inputBuffer += static_cast<char>(event.text.unicode);
     }
-    else if (event.text.unicode == '.') { // add decimals
-        if (inputBuffer.find('.') == std::string::npos) { // no dot already added
+    else if (event.text.unicode == '.') { 
+        if (inputBuffer.find('.') == std::string::npos) { 
             inputBuffer += '.';
         }
     }
@@ -74,35 +74,43 @@ void handleTextInput(sf::Event& event) {
 
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(960, 720), "Electron - Vizualizator de scheme electronice");
+    sf::RenderWindow window(sf::VideoMode(1300, 720), "Electron - Vizualizator de scheme electronice");
     window.setFramerateLimit(100);
     sf::View view = window.getDefaultView();
 
     while (window.isOpen()) {
         sf::Event event;
         while (window.pollEvent(event)) {
-            // Close event
+            
             if (event.type == sf::Event::Closed) {
                 window.close();
             }
-            // Keyboard events
+            
             if (event.type == sf::Event::KeyPressed) {
-                // Close (Ctrl + W)
+                
                 if (event.key.code == sf::Keyboard::W && event.key.control) {
                     window.close();
                 }
-                // Stop any action we are doing (Esc)
+                
                 if (event.key.code == sf::Keyboard::Escape) {
                     stopAnyAction();
                 }
-                // Rotate (R)
+                
                 if (event.key.code == sf::Keyboard::R) {
                     int comp = getSelection();
                     if (comp != -1) {
                         rotate(components[comp]);
                     }
                 }
-                // Start editing (E)
+
+                if(event.key.code == sf::Keyboard::Delete){
+                    int comp = getSelection();
+                    if(comp != -1){
+                        components[comp].sters = true;
+                        components[comp].isSelected = false;
+                    }
+                }
+                
                 if (event.key.code == sf::Keyboard::E) {
                     int comp = getSelection();
                     if (comp != -1) {
@@ -111,18 +119,18 @@ int main() {
                     }
                 }
 
-                // Save (Ctrl + S)
+                
                 if (event.key.code == sf::Keyboard::S && event.key.control) {
                     stopAnyAction();
                     
-                    // ask for filename in console
+                    
                     std::cout << "\n[System] Enter filename to SAVE (e.g. 'my_circuit'): ";
                     std::string filename;
                     std::getline(std::cin, filename);
                     
-                    // Save
+                    
                     if (!filename.empty()) {
-                        // add .txt if missing
+                        
                         if (filename.find(".txt") == std::string::npos) {
                             filename += ".txt";
                         }
@@ -130,7 +138,7 @@ int main() {
                     }
                 }
 
-                // Load (Ctrl + O)
+                
                 if (event.key.code == sf::Keyboard::O && event.key.control) {
                     stopAnyAction();
 
@@ -147,12 +155,12 @@ int main() {
                 }
             }
 
-            // Text input (only if editing)
+            
             if (event.type == sf::Event::TextEntered && isEditing) {
                 handleTextInput(event);
             }
 
-            // Mouse zoom
+            
             if (event.type == sf::Event::MouseWheelScrolled) {
                 int comp = getSelection();
                 if (comp != -1) {
@@ -166,7 +174,7 @@ int main() {
                     else {
                         zoomChange += Constants::zoomSensitivity;
                     }
-                    // Clamp the zoom level
+                    
                     if (zoomLevel * zoomChange < Constants::zoomAlpha || zoomLevel * zoomChange > 1.0 / Constants::zoomAlpha) {
                         continue;
                     }
@@ -175,20 +183,20 @@ int main() {
                 }
             }
 
-            // Mouse press
+            
             if (event.type == sf::Event::MouseButtonPressed) {
-                // Right Click -> Start panning / stop wiring
+                
                 if (event.mouseButton.button == sf::Mouse::Right) {
                     isPanning = true;
                     lastMousePixel = sf::Mouse::getPosition(window);
                 }
-                // Left Click -> Select or Menu
+                
                 if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                     sf::Vector2i mousePixel = sf::Mouse::getPosition(window);
                     sf::Vector2f mouseWorld = window.mapPixelToCoords(mousePixel, view);
                     
                     float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
-                    // In the Menu zone => Select piece
+                    
                     if (mousePixel.x <= menuWidth) {
                         if (getSelection() != -1) {
                             stopSelecting();
@@ -196,7 +204,7 @@ int main() {
                         }
                         float menuHeight = static_cast<float>(window.getSize().y);
                         float margin = menuHeight * 0.06f;
-                        // Divide the space evenly for every component
+                        
                         float spacing = (menuHeight - 2 * margin) / static_cast<float>(types.size());
 
                         int optionIndex = static_cast<int>(std::round((mousePixel.y - margin) / spacing));
@@ -209,18 +217,18 @@ int main() {
                         continue;
                     }
 
-                    // Check for pin selection first
+                    
                     std::pair<int, int> clickedPin = findPinAt(mouseWorld);
 
                     if (clickedPin.first != -1) {
-                        // Start wiring
+                        
                         if (isWiring == false) {
                             isWiring = true;
                             pendingPin = clickedPin;
                             stopSelecting();
                         }
                         else {
-                            // if the pins are from different components, wire them
+                            
                             if (pendingPin.first != clickedPin.first) {
                                 wires.push_back(Wire{
                                     pendingPin.first,
@@ -234,8 +242,8 @@ int main() {
                         continue;
                     }
                     else if (isWiring) {
-                        // if we clicked anything other than a pin
-                        // while wiring, cancel wiring
+                        
+                        
                         stopWiring();
                         continue;
                     }
@@ -245,28 +253,28 @@ int main() {
                         stopSelecting();
                         continue;
                     }
-                    // Select the component under the cursor
+                    
                     if (components[selected].isSelected == false) {
                         stopSelecting();
                         components[selected].isSelected = true;
                     }
-                    // If too close to another component, don't deselect 
+                    
                     else if (tooClose(window.mapPixelToCoords(mousePixel, view), selected) == false) {
                         stopSelecting();
                     }
                 }
             }
 
-            // Mouse release
+            
             if (event.type == sf::Event::MouseButtonReleased) {
-                // Right Click Release -> Stop panning
+                
                 if (event.mouseButton.button == sf::Mouse::Right) {
                     isPanning = false;
                 }
             }
         }
 
-        // Handle panning
+        
         if (isPanning) {
             sf::Vector2i currentMousePixel = sf::Mouse::getPosition(window);
             sf::Vector2f lastWorld = window.mapPixelToCoords(lastMousePixel, view);
@@ -276,7 +284,7 @@ int main() {
             lastMousePixel = currentMousePixel;
         }
 
-        // Handle dragged components
+        
         int selected = getSelection();
         if (selected != -1) {
             components[selected].position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
@@ -286,7 +294,7 @@ int main() {
 
         Renderer::drawGrid(window, view);
 
-        // if wiring and got a valid start pin, draw a ghost wire
+        
         if (isWiring && pendingPin.first != -1) {
             auto& startComponent = components[pendingPin.first];
             sf::Vector2f startPin = startComponent.getAbsPin(pendingPin.second);

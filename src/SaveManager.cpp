@@ -13,7 +13,7 @@ namespace SaveManager {
             return;
         }
 
-        // Save Components
+        
         out << components.size() << "\n";
         for (const auto& comp : components) {
             out << comp.type << " " 
@@ -21,10 +21,11 @@ namespace SaveManager {
                 << comp.position.y << " " 
                 << comp.rotation << " " 
                 << comp.value << " "
-                << comp.scale << "\n";
+                << comp.scale << " "
+                << comp.sters << "\n";
         }
 
-        // Save Wires
+        
         out << wires.size() << "\n";
         for (const auto& wire : wires) {
             out << wire.startComponentIndex << " " 
@@ -32,6 +33,8 @@ namespace SaveManager {
                 << wire.endComponentIndex << " " 
                 << wire.endPinIndex << "\n";
         }
+
+        out.flush();
 
         std::cout << "[Success] Circuit saved to " << filename << std::endl;
     }
@@ -44,38 +47,40 @@ namespace SaveManager {
             return;
         }
 
-        // Clear current state
+        
         components.clear();
         wires.clear();
 
-        // Load Components
+        
         size_t compCount;
         if (!(in >> compCount)) return;
 
         for (size_t i = 0; i < compCount; ++i) {
             std::string type;
             float x, y, rot, val, scl;
+            bool sters;
             
-            in >> type >> x >> y >> rot >> val >> scl;
+            in >> type >> x >> y >> rot >> val >> scl >> sters;
 
-            // Recreate component
-            // constructor => ensures pins are loaded from assets
+            
+            
             Component c(x, y, type); 
             c.rotation = rot;
             c.value = val;
             c.scale = scl;
+            c.sters = sters;
             
             components.push_back(c);
         }
 
-        // Load Wires
+        
         size_t wireCount;
         if (in >> wireCount) {
             for (size_t i = 0; i < wireCount; ++i) {
                 int sIdx, sPin, eIdx, ePin;
                 in >> sIdx >> sPin >> eIdx >> ePin;
                 
-                // safety check
+                
                 if (sIdx < components.size() && eIdx < components.size()) {
                     wires.push_back({sIdx, sPin, eIdx, ePin});
                 }

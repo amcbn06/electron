@@ -38,8 +38,9 @@ struct Component {
     float scale = 20.0f;
     bool isSelected = false;
     bool simple = false;
+    bool sters = false;
 
-    // relative pins to the center
+    
     std::vector<sf::Vector2f> relPins;
 
     Component() { }
@@ -60,9 +61,9 @@ bool tooClose(sf::Vector2f pos, int index);
 
 int findClosest(sf::Vector2f pos);
 
-// Find which pin (if any) is under the mouse
-// Returns a pair: { componentIndex, pinIndex }
-// Returns {-1, -1} if none
+
+
+
 std::pair<int, int> findPinAt(const sf::Vector2f& mousePos);
 
 void rotate(Component& x);
