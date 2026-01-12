@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <iostream>
@@ -228,14 +229,19 @@ int main() {
                             stopSelecting();
                         }
                         else {
-                            
                             if (pendingPin.first != clickedPin.first) {
-                                wires.push_back(Wire{
+                                Wire wire{
                                     pendingPin.first,
                                     pendingPin.second,
                                     clickedPin.first,
                                     clickedPin.second
-                                });
+                                };
+                                if (wires.size() && std::find(wires.begin(), wires.end(), wire) != wires.end()) {
+                                    wires.erase(std::find(wires.begin(), wires.end(), wire));
+                                }
+                                else {
+                                    wires.push_back(wire);
+                                }
                             }
                             stopWiring();
                         }

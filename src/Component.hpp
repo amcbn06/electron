@@ -25,6 +25,12 @@ struct Wire {
     int startPinIndex;
     int endComponentIndex;
     int endPinIndex;
+    bool operator==(const Wire& other) const {
+        return startComponentIndex == other.startComponentIndex &&
+               startPinIndex == other.startPinIndex &&
+               endComponentIndex == other.endComponentIndex &&
+               endPinIndex == other.endPinIndex;
+    }
 };
 
 struct Component {
