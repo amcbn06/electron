@@ -236,8 +236,17 @@ int main() {
                                     clickedPin.first,
                                     clickedPin.second
                                 };
-                                if (wires.size() && std::find(wires.begin(), wires.end(), wire) != wires.end()) {
+                                Wire reverse_wire{
+                                    clickedPin.first,
+                                    clickedPin.second,
+                                    pendingPin.first,
+                                    pendingPin.second
+                                };
+                                if (std::find(wires.begin(), wires.end(), wire) != wires.end()) {
                                     wires.erase(std::find(wires.begin(), wires.end(), wire));
+                                }
+                                else if (std::find(wires.begin(), wires.end(), reverse_wire) != wires.end()) {
+                                    wires.erase(std::find(wires.begin(), wires.end(), reverse_wire));
                                 }
                                 else {
                                     wires.push_back(wire);
@@ -248,8 +257,6 @@ int main() {
                         continue;
                     }
                     else if (isWiring) {
-                        
-                        
                         stopWiring();
                         continue;
                     }
