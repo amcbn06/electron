@@ -1,20 +1,33 @@
-CXX = g++
-CXXFLAGS = -std=c++17 -Wall -I./include
-LDFLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 
-TARGET = electron
+SRCDIR := src
+OBJDIR := build
+TARGET := electron
 
-SRCS = src/main.cpp src/electron.cpp src/utils.cpp
+CXX := g++
+SFML_INCLUDE := /home/kali/SFML-2.6.2/include
+SFML_LIBDIR := /home/kali/SFML-2.6.2/lib
 
-all: $(TARGET)
+CXXFLAGS := -std=c++17 -Wall -Wextra -O2 -I$(SRCDIR) -I$(SFML_INCLUDE)
+LDFLAGS := -Wl,-rpath,$(SFML_LIBDIR) -L$(SFML_LIBDIR) -lsfml-graphics -lsfml-window -lsfml-system
 
-$(TARGET): $(SRCS)
-	$(CXX) $(CXXFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS)
+SRCS := $(wildcard $(SRCDIR)/*.cpp)
+OBJS := $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SRCS))
 
-run: $(TARGET)
-	./$(TARGET)
+.PHONY: all clean dirs run
+
+all: dirs $(OBJDIR)/$(TARGET)
+
+dirs:
+	mkdir -p $(OBJDIR) $(OBJDIR)
+
+$(OBJDIR)/$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET)
+	rm -rf $(OBJDIR) $(OBJDIR)
 
-.PHONY: all clean run
+run: all
+	./$(OBJDIR)/$(TARGET)

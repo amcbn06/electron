@@ -2,7 +2,6 @@ Condensator-polarizat
 2
 -1.0 0.0
 1.0 0.0
-Descriere
 8
 L -1.0 0.0 0.0 0.0
 L 0.0 -1.0 0.0 1.0

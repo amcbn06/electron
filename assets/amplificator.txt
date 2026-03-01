@@ -3,7 +3,6 @@ Amplificator-operational
 -4.5 -1.5
 -4.5 1.5
 4.5 0
-Descriere
 9
 L -2.25 -2.25 -3.0 -2.25
 L -2.25 0.75 -3.0 0.75

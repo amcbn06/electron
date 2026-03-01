@@ -1,324 +1,336 @@
 #include <SFML/Graphics.hpp>
+
+#include <algorithm>
+#include <chrono>
 #include <cmath>
-#include <cstdio>
-#include <vector>
-#include <cstring>
 #include <iostream>
-#include <string>
-#include "../include/structs.hpp"
-#include "../include/utils.hpp"
-#include "../include/electron.hpp"
 
-using namespace std;
+#include "Component.hpp"
+#include "Constants.hpp"
+#include "Renderer.hpp"
+#include "SaveManager.hpp"
+#include "Theme.hpp"
 
-float zoom = 7.0;
-int gridSize = 14;
 
-int main()
-{
-    sf::ContextSettings settings;
-    settings.antialiasingLevel = 4;
-    sf::RenderWindow window(sf::VideoMode(1200, 800), "Electron SFML - Proiect", sf::Style::Default, settings);
-    window.setFramerateLimit(60);
+extern std::vector<Component> components;
+extern std::vector<Wire> wires;
 
-    sf::Font font;
-    if (!font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
-    {
-        std::cout << "Warning: Font not found.\n";
+
+bool isPanning = false;
+bool isEditing = false;
+sf::Vector2i lastMousePixel;
+std::string inputBuffer;
+float zoomLevel = 1.0f;
+
+
+bool isWiring = false;
+std::pair<int, int> pendingPin(-1, -1);
+
+
+void stopEditing() {
+    isEditing = false;
+    inputBuffer.clear();
+}
+
+void stopSelecting() {
+    for (auto& component : components) {
+        component.isSelected = false;
+    }
+    stopEditing();
+}
+
+void stopWiring() {
+    isWiring = false;
+    pendingPin = std::make_pair(-1, -1);
+}
+
+void stopAnyAction() {
+    stopWiring();
+    stopSelecting();
+}
+
+void handleTextInput(sf::Event& event) {
+    if (event.text.unicode == 8) { 
+        if (inputBuffer.size() > 0) {
+            inputBuffer.pop_back();
+        }
+    }
+    else if (event.text.unicode >= '0' && event.text.unicode <= '9') { 
+        inputBuffer += static_cast<char>(event.text.unicode);
+    }
+    else if (event.text.unicode == '.') { 
+        if (inputBuffer.find('.') == std::string::npos) { 
+            inputBuffer += '.';
+        }
     }
 
-    piesa Meniu[MAX1];
-    unsigned nrPieseMeniu = 12;
-    const char *names[] = {"", "DIODA", "ZENNER", "TRANZNPN", "TRANZPNP", "CONDENS",
-                           "REZIST", "BATERIE", "POLARIZ", "SINU", "SERVOMOT", "AMPLOP", "STOP"};
-    for (unsigned i = 1; i <= nrPieseMeniu; i++)
-    {
-        if (i <= 12)
-            strcpy(Meniu[i].nume, names[i]);
-        initializeaza(Meniu[i]);
+    int id = getSelection();
+    if (inputBuffer.size() > 0) {
+        components[id].value = std::stof(inputBuffer);
     }
+    else {
+        components[id].value = INFINITY;
+    }
+}
 
-    saveFile currentSave;
-    int nextId = 1;
 
-    int selectedPieceIdx = -1;
-    bool isDragging = false;
-    sf::Vector2f dragOffset;
-
-    int connectNode1_PieceIdx = -1;
-    int connectNode1_Index = -1;
+int main() {
+    sf::RenderWindow window(sf::VideoMode(1300, 720), "Electron - Vizualizator de scheme electronice");
+    window.setFramerateLimit(100);
+    sf::View view = window.getDefaultView();
 
     while (window.isOpen())
     {
         sf::Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
+        while (window.pollEvent(event)) {
+            
+            if (event.type == sf::Event::Closed) {
                 window.close();
+            }
+            
+            if (event.type == sf::Event::KeyPressed) {
+                
+                if (event.key.code == sf::Keyboard::W && event.key.control) {
+                    window.close();
+                }
+                
+                if (event.key.code == sf::Keyboard::Escape) {
+                    stopAnyAction();
+                }
+                
+                if (event.key.code == sf::Keyboard::R) {
+                    int comp = getSelection();
+                    if (comp != -1) {
+                        rotate(components[comp]);
+                    }
+                }
 
-            if (event.type == sf::Event::MouseButtonPressed)
-            {
-                int mx = event.mouseButton.x;
-                int my = event.mouseButton.y;
+                if(event.key.code == sf::Keyboard::Delete){
+                    int comp = getSelection();
+                    if(comp != -1){
+                        components[comp].sters = true;
+                        components[comp].isSelected = false;
+                    }
+                }
+                
+                if (event.key.code == sf::Keyboard::E) {
+                    int comp = getSelection();
+                    if (comp != -1) {
+                        isEditing = true;
+                        inputBuffer.clear();
+                    }
+                }
 
-                if (event.mouseButton.button == sf::Mouse::Left)
-                {
-                    if (my <= 60)
-                    {
-                        int lat = window.getSize().x / nrPieseMeniu;
-                        if (lat > 0)
-                        {
-                            int clicked = mx / lat + 1;
-                            if (clicked < 1)
-                                clicked = 1;
-                            if (clicked > (int)nrPieseMeniu)
-                                clicked = nrPieseMeniu;
-                            int centerX = lat * clicked - lat / 2;
-                            if (abs(centerX - mx) <= lat / 2)
-                            {
-                                if (strcmp(Meniu[clicked].nume, "STOP") == 0)
-                                {
-                                    window.close();
-                                }
-                                else
-                                {
-                                    piesa noua = Meniu[clicked];
-                                    noua.id = nextId++;
-                                    noua.x = 600;
-                                    noua.y = 400;
-                                    noua.orientare = 0;
-                                    currentSave.piese.push_back(noua);
-                                    selectedPieceIdx = currentSave.piese.size() - 1;
-                                }
-                            }
+                
+                if (event.key.code == sf::Keyboard::S && event.key.control) {
+                    stopAnyAction();
+                    
+                    
+                    std::cout << "\n[System] Enter filename to SAVE (e.g. 'my_circuit'): ";
+                    std::string filename;
+                    std::getline(std::cin, filename);
+                    
+                    
+                    if (!filename.empty()) {
+                        
+                        if (filename.find(".txt") == std::string::npos) {
+                            filename += ".txt";
                         }
+                        SaveManager::saveCircuit(filename, components, wires);
                     }
-                    else
-                    {
-                        int pIdx, nIdx;
-                        if (findNodeAt(currentSave.piese, mx, my, pIdx, nIdx))
-                        {
-                            if (connectNode1_PieceIdx == -1)
-                            {
-                                connectNode1_PieceIdx = pIdx;
-                                connectNode1_Index = nIdx;
-                                cout << "Nod start selectat.\n";
-                            }
-                            else
-                            {
-                                if (connectNode1_PieceIdx != pIdx)
-                                {
-                                    Legatura l;
-                                    l.piesa1_id = currentSave.piese[connectNode1_PieceIdx].id;
-                                    l.nod1_index = connectNode1_Index;
-                                    l.piesa2_id = currentSave.piese[pIdx].id;
-                                    l.nod2_index = nIdx;
-                                    currentSave.legaturi.push_back(l);
-                                    cout << "Legatura creata.\n";
+                }
+
+                
+                if (event.key.code == sf::Keyboard::O && event.key.control) {
+                    stopAnyAction();
+
+                    std::cout << "\n[System] Enter filename to LOAD (e.g. 'my_circuit'): ";
+                    std::string filename;
+                    std::getline(std::cin, filename);
+                    
+                    if (!filename.empty()) {
+                        if (filename.find(".txt") == std::string::npos) {
+                            filename += ".txt";
+                        }
+                        SaveManager::loadCircuit(filename, components, wires);
+                    }
+                }
+            }
+
+            
+            if (event.type == sf::Event::TextEntered && isEditing) {
+                handleTextInput(event);
+            }
+
+            
+            if (event.type == sf::Event::MouseWheelScrolled) {
+                int comp = getSelection();
+                if (comp != -1) {
+                    zoom(components[comp], event.mouseWheelScroll.delta > 0);
+                }
+                else {
+                    float zoomChange = 1.0f;
+                    if (event.mouseWheelScroll.delta > 0) {
+                        zoomChange -= Constants::zoomSensitivity;
+                    }
+                    else {
+                        zoomChange += Constants::zoomSensitivity;
+                    }
+                    
+                    if (zoomLevel * zoomChange < Constants::zoomAlpha || zoomLevel * zoomChange > 1.0 / Constants::zoomAlpha) {
+                        continue;
+                    }
+                    view.zoom(zoomChange);
+                    zoomLevel *= zoomChange;
+                }
+            }
+
+            
+            if (event.type == sf::Event::MouseButtonPressed) {
+                
+                if (event.mouseButton.button == sf::Mouse::Right) {
+                    isPanning = true;
+                    lastMousePixel = sf::Mouse::getPosition(window);
+                }
+                
+                if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                    sf::Vector2i mousePixel = sf::Mouse::getPosition(window);
+                    sf::Vector2f mouseWorld = window.mapPixelToCoords(mousePixel, view);
+                    
+                    float menuWidth = static_cast<float>(window.getSize().x) / 10.0f;
+                    
+                    if (mousePixel.x <= menuWidth) {
+                        if (getSelection() != -1) {
+                            stopSelecting();
+                            continue;
+                        }
+                        float menuHeight = static_cast<float>(window.getSize().y);
+                        float margin = menuHeight * 0.06f;
+                        
+                        float spacing = (menuHeight - 2 * margin) / static_cast<float>(types.size());
+
+                        int optionIndex = static_cast<int>(std::round((mousePixel.y - margin) / spacing));
+                        if (optionIndex >= 0 && optionIndex < (int)types.size()) {
+                            stopSelecting();
+                            spawnComponent(types[optionIndex], window.getView().getCenter());
+                            int index = (int)components.size() - 1;
+                            components[index].isSelected = true;
+                        }
+                        continue;
+                    }
+
+                    
+                    std::pair<int, int> clickedPin = findPinAt(mouseWorld);
+
+                    if (clickedPin.first != -1) {
+                        
+                        if (isWiring == false) {
+                            isWiring = true;
+                            pendingPin = clickedPin;
+                            stopSelecting();
+                        }
+                        else {
+                            if (pendingPin.first != clickedPin.first) {
+                                Wire wire{
+                                    pendingPin.first,
+                                    pendingPin.second,
+                                    clickedPin.first,
+                                    clickedPin.second
+                                };
+                                Wire reverse_wire{
+                                    clickedPin.first,
+                                    clickedPin.second,
+                                    pendingPin.first,
+                                    pendingPin.second
+                                };
+                                if (std::find(wires.begin(), wires.end(), wire) != wires.end()) {
+                                    wires.erase(std::find(wires.begin(), wires.end(), wire));
                                 }
-                                connectNode1_PieceIdx = -1;
+                                else if (std::find(wires.begin(), wires.end(), reverse_wire) != wires.end()) {
+                                    wires.erase(std::find(wires.begin(), wires.end(), reverse_wire));
+                                }
+                                else {
+                                    wires.push_back(wire);
+                                }
                             }
+                            stopWiring();
                         }
-                        else
-                        {
-                            int idx = findPieceAt(currentSave.piese, mx, my);
-                            if (idx != -1)
-                            {
-                                selectedPieceIdx = idx;
-                                isDragging = true;
-                                dragOffset.x = currentSave.piese[idx].x - mx;
-                                dragOffset.y = currentSave.piese[idx].y - my;
-                            }
-                            else
-                            {
-                                selectedPieceIdx = -1;
-                                connectNode1_PieceIdx = -1;
-                            }
-                        }
+                        continue;
                     }
-                }
-                else if (event.mouseButton.button == sf::Mouse::Right)
-                {
-                    int idx = findPieceAt(currentSave.piese, mx, my);
-                    if (idx != -1)
-                    {
-                        currentSave.piese[idx].orientare = (currentSave.piese[idx].orientare + 1) % 4;
+                    else if (isWiring) {
+                        stopWiring();
+                        continue;
+                    }
+
+                    int selected = findClosest(mouseWorld);
+                    if (selected == -1) {
+                        stopSelecting();
+                        continue;
+                    }
+                    
+                    if (components[selected].isSelected == false) {
+                        stopSelecting();
+                        components[selected].isSelected = true;
+                    }
+                    
+                    else if (tooClose(window.mapPixelToCoords(mousePixel, view), selected) == false) {
+                        stopSelecting();
                     }
                 }
             }
 
-            if (event.type == sf::Event::MouseButtonReleased)
-            {
-                if (event.mouseButton.button == sf::Mouse::Left)
-                {
-                    isDragging = false;
-                }
-            }
-
-            if (event.type == sf::Event::MouseMoved && isDragging && selectedPieceIdx != -1)
-            {
-                float rawX = event.mouseMove.x + dragOffset.x;
-                float rawY = event.mouseMove.y + dragOffset.y;
-
-                currentSave.piese[selectedPieceIdx].x = round(rawX / gridSize) * gridSize;
-                currentSave.piese[selectedPieceIdx].y = round(rawY / gridSize) * gridSize;
-            }
-
-            if (event.type == sf::Event::KeyPressed)
-            {
-                if (event.key.code == sf::Keyboard::T)
-                {
-                    currentSave = saveFile();
-                    selectedPieceIdx = -1;
-                    connectNode1_PieceIdx = -1;
-                    nextId = 1;
-                    cout << "Circuit sters.\n";
-                }
-                if (event.key.code == sf::Keyboard::S)
-                {
-                    cout << "Introdu numarul salvarii (ex: 1): ";
-                    int saveId;
-                    cin >> saveId;
-                    save(saveId, currentSave);
-                    cout << "Circuit salvat.\n";
-                }
-                if (event.key.code == sf::Keyboard::L)
-                {
-                    cout << "Introdu numarul salvarii de incarcat (ex: 1): ";
-                    int loadId;
-                    cin >> loadId;
-                    currentSave = load(loadId);
-                    nextId = 1;
-                    for (const auto &p : currentSave.piese)
-                    {
-                        if (p.id >= nextId)
-                            nextId = p.id + 1;
-                    }
-                    for (auto &p : currentSave.piese)
-                    {
-                        initializeaza(p);
-                    }
-                    selectedPieceIdx = -1;
-                    connectNode1_PieceIdx = -1;
-                    cout << "Circuit incarcat.\n";
-                }
-            }
-
-            if (event.type == sf::Event::KeyPressed)
-            {
-                if (event.key.code == sf::Keyboard::Delete || event.key.code == sf::Keyboard::BackSpace && selectedPieceIdx != -1)
-                {
-                    int idDel = currentSave.piese[selectedPieceIdx].id;
-                    for (int k = currentSave.legaturi.size() - 1; k >= 0; k--)
-                    {
-                        if (currentSave.legaturi[k].piesa1_id == idDel || currentSave.legaturi[k].piesa2_id == idDel)
-                            currentSave.legaturi.erase(currentSave.legaturi.begin() + k);
-                    }
-                    currentSave.piese.erase(currentSave.piese.begin() + selectedPieceIdx);
-                    selectedPieceIdx = -1;
-                }
-                if (event.key.code == sf::Keyboard::E && selectedPieceIdx != -1)
-                {
-                    cout << "Introdu eticheta noua pt piesa (in consola): ";
-                    cin.getline(currentSave.piese[selectedPieceIdx].eticheta, 100);
-                    cout << "Eticheta actualizata.\n";
-                }
-                if (event.key.code == sf::Keyboard::V)
-                {
-                    cout << "--- Verificare Circuit ---\n";
-                    if (currentSave.piese.empty())
-                        cout << "Circuit gol.\n";
-                    else
-                    {
-                        int noduriConectate = 0;
-                        int totalNoduri = 0;
-                        for (const auto &p : currentSave.piese)
-                            totalNoduri += p.nrLegaturi;
-
-                        cout << "Total piese: " << currentSave.piese.size() << "\n";
-                        cout << "Total legaturi: " << currentSave.legaturi.size() << "\n";
-                    }
-                    cout << "--------------------------\n";
+            
+            if (event.type == sf::Event::MouseButtonReleased) {
+                
+                if (event.mouseButton.button == sf::Mouse::Right) {
+                    isPanning = false;
                 }
             }
         }
 
-        window.clear(sf::Color::Black);
-
-        sf::RectangleShape dot(sf::Vector2f(2, 2));
-        dot.setFillColor(sf::Color(40, 40, 40));
-        for (int y = 0; y < window.getSize().y; y += gridSize)
-        {
-            for (int x = 0; x < window.getSize().x; x += gridSize)
-            {
-                dot.setPosition(x, y);
-                window.draw(dot);
-            }
+        
+        if (isPanning) {
+            sf::Vector2i currentMousePixel = sf::Mouse::getPosition(window);
+            sf::Vector2f lastWorld = window.mapPixelToCoords(lastMousePixel, view);
+            sf::Vector2f currentWorld = window.mapPixelToCoords(currentMousePixel, view);
+            sf::Vector2f delta = lastWorld - currentWorld;
+            view.move(delta * Constants::panningSensitivity);
+            lastMousePixel = currentMousePixel;
         }
 
-        deseneazaMeniul(window, Meniu, nrPieseMeniu, font);
-
-        for (const auto &l : currentSave.legaturi)
-        {
-            int idx1 = findPieceIndexById(currentSave.piese, l.piesa1_id);
-            int idx2 = findPieceIndexById(currentSave.piese, l.piesa2_id);
-
-            if (idx1 != -1 && idx2 != -1)
-            {
-                sf::Vector2f p1 = getAbsoluteNodePos(currentSave.piese[idx1], l.nod1_index);
-                sf::Vector2f p2 = getAbsoluteNodePos(currentSave.piese[idx2], l.nod2_index);
-
-                auto drawManhattan = [&](const sf::Vector2f &a, const sf::Vector2f &b, sf::Color col)
-                {
-                    sf::Vector2f corner(a.x, b.y);
-                    if ((corner == a) || (corner == b))
-                        corner = sf::Vector2f(b.x, a.y);
-
-                    sf::VertexArray va(sf::LineStrip, 3);
-                    va[0] = sf::Vertex(a, col);
-                    va[1] = sf::Vertex(corner, col);
-                    va[2] = sf::Vertex(b, col);
-                    window.draw(va);
-                };
-
-                drawManhattan(p1, p2, sf::Color::Yellow);
-            }
+        
+        int selected = getSelection();
+        if (selected != -1) {
+            components[selected].position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
         }
 
-        if (connectNode1_PieceIdx != -1)
-        {
-            sf::Vector2f p1 = getAbsoluteNodePos(currentSave.piese[connectNode1_PieceIdx], connectNode1_Index);
-            sf::Vector2f pMouse((float)sf::Mouse::getPosition(window).x, (float)sf::Mouse::getPosition(window).y);
-            sf::Vertex line[] = {
-                sf::Vertex(p1, sf::Color::Cyan),
-                sf::Vertex(pMouse, sf::Color::Cyan)};
-            window.draw(line, 2, sf::Lines);
+        window.clear(Theme::Background);
+
+        Renderer::drawGrid(window, view);
+
+        
+        if (isWiring && pendingPin.first != -1) {
+            auto& startComponent = components[pendingPin.first];
+            sf::Vector2f startPin = startComponent.getAbsPin(pendingPin.second);
+            
+            float startThresh = startComponent.scale * 1.5f;
+
+            sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window), view);
+            sf::Vector2f mouseCenter(-9999, -9999); 
+
+            Renderer::drawAutoRoute(window, startPin, mousePos, 
+                                    startComponent.position, startThresh, 
+                                    mouseCenter, 0.0f, 
+                                    Theme::Wire::ghost);
+
         }
 
-        for (int i = 0; i < currentSave.piese.size(); i++)
-        {
-            sf::Color c = (i == selectedPieceIdx) ? sf::Color::Cyan : sf::Color::Green;
-            deseneaza(window, currentSave.piese[i], c);
+        Renderer::drawAllComponents(window);
 
-            sf::Text lbl;
-            lbl.setFont(font);
-            lbl.setString(currentSave.piese[i].eticheta);
-            lbl.setCharacterSize(12);
-            lbl.setFillColor(sf::Color::White);
-            lbl.setPosition(currentSave.piese[i].x - 10, currentSave.piese[i].y + 20);
-            window.draw(lbl);
-        }
+        Renderer::drawMenu(window);
 
-        sf::Text help;
-        help.setFont(font);
-        help.setString("Click: Select/Move | Right Click: Rotate | Click Nodes: Connect | E: Edit Label | Del: Delete | S: Save | L: Load | T: Delete all");
-        help.setCharacterSize(14);
-        help.setFillColor(sf::Color(150, 150, 150));
-        help.setPosition(10, window.getSize().y - 20);
-        window.draw(help);
-
+        window.setView(view);
         window.display();
     }
-
     return 0;
 }
